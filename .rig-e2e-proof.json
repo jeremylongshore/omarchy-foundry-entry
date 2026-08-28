@@ -1,10 +1,12 @@
 {
-  "commit": "c033583252e18ed5343b909f2f3971f57a8fff1e",
+  "commit": "9d6cfc8316b4e58695057027bdd16cb0a891c5ff",
+  "installedFoundryCommit": "9d6cfc8316b4e58695057027bdd16cb0a891c5ff",
+  "generatedTreeCommit": "0d4a667e408a4aac56ce91c9ef490fe348dacfe3",
   "rig": "intent-ops-buzz/omarchy-rig",
   "foundryOrigin": "github",
   "generatedOrigin": "file-git",
   "node": "shadowed",
   "hostileId": "refused",
   "generatedShell": "loaded",
-  "completedAt": "2026-08-28T04:07:07Z"
+  "completedAt": "2026-08-28T04:13:20Z"
 }
