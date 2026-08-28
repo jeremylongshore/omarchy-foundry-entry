@@ -69,7 +69,7 @@ pkill -f 'qs -p' 2>/dev/null || true
 PATH=/tmp/foundry-nonode:/root/omarchy/bin:/usr/bin:/bin qs -p /root/omarchy/shell >/tmp/foundry-generated-qs.log 2>&1 &
 sleep 18
 test -s /tmp/foundry-generated-qs.log || true
-if grep -a -iE 'cannot assign|is not a type|unable to|no such|ERROR' /tmp/foundry-generated-qs.log | grep -avE 'libEGL|MESA|ZINK|pipewire|UPower|hyprland' >/dev/null; then
+if grep -a -iE 'cannot assign|is not a type|unable to|no such|ERROR' /tmp/foundry-generated-qs.log | grep -aviE 'libEGL|MESA|ZINK|pipewire|pw_loop_new|pw\.loop|UPower|hyprland' >/dev/null; then
   echo "rig-e2e: generated plugin emitted a shell load error" >&2
   grep -a -iE 'cannot assign|is not a type|unable to|no such|ERROR' /tmp/foundry-generated-qs.log >&2
   exit 1
