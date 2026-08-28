@@ -30,6 +30,7 @@ remove_id "$generated_id"
 omarchy plugin add "$repo" --enable --yes
 foundry=/root/.config/omarchy/plugins/$foundry_id
 test -x "$foundry/bin/omarchy-foundry"
+foundry_commit=$(git -C "$foundry" rev-parse HEAD)
 
 root=$(mktemp -d /tmp/foundry-e2e-XXXXXX)
 trap 'rm -rf "$root"' EXIT
@@ -53,6 +54,7 @@ git -C "$generated" config user.email e2e@invalid.local
 git -C "$generated" config user.name "Foundry E2E"
 git -C "$generated" add .
 git -C "$generated" commit -qm generated
+generated_commit=$(git -C "$generated" rev-parse HEAD)
 omarchy plugin add "file://$generated" --enable --yes
 omarchy plugin list --json | grep -F "$generated_id" | grep -F enabled >/dev/null
 
@@ -87,17 +89,21 @@ if FOUNDRY_ALLOWED_ROOT="$root" "$foundry/bin/omarchy-foundry" create \
   exit 1
 fi
 
-echo "E2E_RECEIPT foundry=github generated=file-git node=shadowed hostile_id=refused shell=loaded"
+echo "E2E_RECEIPT installed_foundry=$foundry_commit generated_tree=$generated_commit node=shadowed hostile_id=refused shell=loaded"
 REMOTE
 )"
 
 printf '%s\n' "$RESULT"
 LINE="$(printf '%s\n' "$RESULT" | /usr/bin/grep '^E2E_RECEIPT ' || true)"
-[[ "$LINE" == "E2E_RECEIPT foundry=github generated=file-git node=shadowed hostile_id=refused shell=loaded" ]] || {
+[[ "$LINE" =~ ^E2E_RECEIPT\ installed_foundry=([0-9a-f]{40})\ generated_tree=([0-9a-f]{40})\ node=shadowed\ hostile_id=refused\ shell=loaded$ ]] || {
   echo "rig-e2e: missing or malformed receipt line" >&2
   exit 1
 }
+INSTALLED_COMMIT="${BASH_REMATCH[1]}"
+GENERATED_COMMIT="${BASH_REMATCH[2]}"
+[[ "$INSTALLED_COMMIT" == "$COMMIT" ]] || { echo "rig-e2e: installed GitHub artifact ($INSTALLED_COMMIT) does not match local commit ($COMMIT)" >&2; exit 1; }
 
 jq -n --arg commit "$COMMIT" --arg rig "$HOST/$CONTAINER" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  '{commit:$commit, rig:$rig, foundryOrigin:"github", generatedOrigin:"file-git", node:"shadowed", hostileId:"refused", generatedShell:"loaded", completedAt:$at}' > "$RECEIPT"
+  --arg installed "$INSTALLED_COMMIT" --arg generated "$GENERATED_COMMIT" \
+  '{commit:$commit, installedFoundryCommit:$installed, generatedTreeCommit:$generated, rig:$rig, foundryOrigin:"github", generatedOrigin:"file-git", node:"shadowed", hostileId:"refused", generatedShell:"loaded", completedAt:$at}' > "$RECEIPT"
 echo "rig-e2e: PASS, receipt written to $RECEIPT"

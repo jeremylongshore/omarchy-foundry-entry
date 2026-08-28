@@ -9,7 +9,7 @@ shell agent, plugin store, or publisher.
 ## What it does
 
 - validates a namespaced plugin id and a user-selected workspace;
-- creates a fresh local repository with a manifest, QML entry point, pure data
+- creates a fresh local starter plugin tree with a manifest, QML entry point, pure data
   model, offline test, README, license, and SVG banner;
 - performs a dry run before writing when requested;
 - reports an explicit `UNPROVEN` proof state until a separate validation lane

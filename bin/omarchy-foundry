@@ -80,6 +80,21 @@ Review every file before installation or publication.
 ## Development
 
 Run \`npm test\`, then \`omarchy plugin validate .\`. Install only after reviewing the diff.
+
+## Install
+
+Publish this reviewed tree to a Git repository, then install it with:
+
+\`omarchy plugin add <git-url> --enable\`
+
+## Remove
+
+\`omarchy plugin remove $id\`
+
+## Runtime dependencies
+
+The widget uses Omarchy's Quickshell APIs only. Node runs the offline test suite
+and is not required at runtime.
 EOF
   cat > "$target/LICENSE" <<'EOF'
 MIT License

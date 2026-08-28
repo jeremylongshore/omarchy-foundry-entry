@@ -46,6 +46,7 @@ test("create writes only a fresh project with deterministic starter files", () =
     assert.equal(JSON.parse(result.stdout).target, target)
     assert.equal(JSON.parse(fs.readFileSync(path.join(target, "manifest.json"))).id, "io.github.demo.hello")
     assert.match(fs.readFileSync(path.join(target, "BarWidget.qml"), "utf8"), /io\.github\.demo\.hello/)
+    assert.match(fs.readFileSync(path.join(target, "README.md"), "utf8"), /omarchy plugin remove io\.github\.demo\.hello/)
     assert.equal(fs.existsSync(path.join(target, "assets", "banner.svg")), true)
     const generatedTests = spawnSync("npm", ["test"], { cwd: target, encoding: "utf8" })
     assert.equal(generatedTests.status, 0, generatedTests.stderr)
