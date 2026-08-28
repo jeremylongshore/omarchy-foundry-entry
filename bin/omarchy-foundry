@@ -74,7 +74,8 @@ EOF
 
 $description
 
-Generated locally by Foundry. Review every file before installation or publication.
+Generated locally by Foundry. This is a starter plugin tree, not a Git repository.
+Review every file before installation or publication.
 
 ## Development
 
@@ -110,6 +111,8 @@ create() {
   [[ -n "$workspace" && -n "$id" && -n "$name" && -n "$description" ]] || fail "create requires workspace, id, name, and description"
   [[ "$id" =~ ^io\.github\.[a-z0-9-]+\.[a-z0-9-]+$ ]] || fail "id must look like io.github.owner.plugin"
   [[ ${#name} -le 48 && ${#description} -le 160 ]] || fail "name or description is too long"
+  [[ "$name" != *$'\n'* && "$name" != *$'\r'* && "$description" != *$'\n'* && "$description" != *$'\r'* ]] || fail "name and description must be single-line text"
+  [[ "$name" != *'<'* && "$name" != *'>'* && "$description" != *'<'* && "$description" != *'>'* ]] || fail "name and description cannot contain markup delimiters"
   [[ -d "$workspace" ]] || fail "workspace does not exist"
   workspace="$(cd "$workspace" && pwd -P)"
   root="$(safe_root)"

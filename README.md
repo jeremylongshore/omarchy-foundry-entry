@@ -2,7 +2,7 @@
 
 ![Foundry banner](assets/banner.svg)
 
-Foundry creates an inspectable local starter tree for a small Omarchy bar
+Foundry creates an inspectable local starter plugin tree for a small Omarchy bar
 widget. It is intentionally a scaffold and proof surface, not an autonomous
 shell agent, plugin store, or publisher.
 
@@ -16,6 +16,12 @@ shell agent, plugin store, or publisher.
   runs;
 - never installs, enables, commits, pushes, sends telemetry, or files a
   marketplace issue.
+
+## Runtime dependencies
+
+The installed helper uses only stock Omarchy tools: `bash` and `jq`. Node is
+development-only; it runs the generated offline test suite and is never needed
+by the bar widget at runtime.
 
 ## Create a draft
 
@@ -44,6 +50,12 @@ omarchy plugin add https://github.com/jeremylongshore/omarchy-foundry-entry --en
 The panel displays a receipt and the terminal command. It does not expose an
 arbitrary command field, because Omarchy plugins share the long-running shell
 process and run with the current user permissions.
+
+## Remove Foundry
+
+```bash
+omarchy plugin remove io.github.jeremylongshore.foundry
+```
 
 ## Development
 

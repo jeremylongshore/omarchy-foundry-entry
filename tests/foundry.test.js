@@ -57,6 +57,10 @@ test("create refuses unsafe ids, existing targets, and workspace symlink escapes
   try {
     const badId = run(fix, "create", "--workspace", fix.workspace, "--id", "io.github.demo.bad;rm", "--name", "Hello", "--description", "A safe draft", "--dry-run")
     assert.equal(badId.status, 2)
+    const badName = run(fix, "create", "--workspace", fix.workspace, "--id", "io.github.demo.name", "--name", "Hello\nInjected", "--description", "A safe draft", "--dry-run")
+    assert.equal(badName.status, 2)
+    const badDescription = run(fix, "create", "--workspace", fix.workspace, "--id", "io.github.demo.description", "--name", "Hello", "--description", "<b>not markup</b>", "--dry-run")
+    assert.equal(badDescription.status, 2)
     const outside = run(fix, "create", "--workspace", os.tmpdir(), "--id", "io.github.demo.hello", "--name", "Hello", "--description", "A safe draft", "--dry-run")
     assert.equal(outside.status, 2)
     const first = run(fix, "create", "--workspace", fix.workspace, "--id", "io.github.demo.existing", "--name", "Hello", "--description", "A safe draft")
