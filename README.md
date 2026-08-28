@@ -1,75 +1,61 @@
-# Omarchy Widget Template
+# Foundry
 
-A batteries-included skeleton for an Omarchy bar widget. It carries the
-architecture and security patterns two shipped entries (Pit Wall, Crew Chief)
-earned the hard way, so a new widget starts from a state that already passes
-the pre-submit gates.
+![Foundry banner](assets/banner.svg)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U5S225PTME)
+Foundry creates an inspectable local starter tree for a small Omarchy bar
+widget. It is intentionally a scaffold and proof surface, not an autonomous
+shell agent, plugin store, or publisher.
 
-## What you get
+## What it does
 
-| File | Role |
-| --- | --- |
-| `BarWidget.qml` | Bar host. Owns the slot and pill button. Shape contract for shell summon/hide/toggle routing. Edit only `moduleName`. |
-| `Panel.qml` | Data lifecycle and popup UI. Fetch via `Process` + `StdioCollector`, parse in `Model.js`, fixed omakase constants, IPC handler, `KeyboardPanel` popup scaffold. |
-| `Model.js` | Pure data layer. Loads in Quickshell AND node, so the whole parse path unit-tests without a shell. `clean()` sanitizer included. |
-| `tests/` | `node --test` harness with fixture loading. Capture real API bodies into `tests/fixtures/`. |
-| `manifest.json` | Placeholder manifest with a commented settings schema. |
-| `.github/workflows/test.yml` | CI: the node test suite on every push. |
+- validates a namespaced plugin id and a user-selected workspace;
+- creates a fresh local repository with a manifest, QML entry point, pure data
+  model, offline test, README, license, and SVG banner;
+- performs a dry run before writing when requested;
+- reports an explicit `UNPROVEN` proof state until a separate validation lane
+  runs;
+- never installs, enables, commits, pushes, sends telemetry, or files a
+  marketplace issue.
 
-## Instantiate
+## Create a draft
 
-```bash
-gh repo create YOURNAME/omarchy-your-widget-entry --template jeremylongshore/omarchy-widget-template --public --clone
-cd omarchy-your-widget-entry
-grep -rl 'YOURNAME\|widget-name\|WIDGET NAME' . | xargs sed -i 's/io.github.YOURNAME.widget-name/io.github.YOURNAME.your-widget/g'
-```
-
-Then replace the example fetch in `Panel.qml`, the parse functions in
-`Model.js`, and the placeholder fields in `manifest.json`.
-
-## The rules the template encodes
-
-These are not style preferences. Each one maps to a defect that shipped in a
-real entry and had to be swept after the fact.
-
-1. **Every network body parses in `Model.js`.** Pure functions, node-testable,
-   malformed input returns the empty shape so the panel keeps last-good state.
-2. **Every API string passes through `Model.clean()`** before a QML `Text`
-   sees it. Strips angle brackets (AutoText promotion) and control chars,
-   caps length.
-3. **Every `Text` that renders API data declares `textFormat:
-   Text.PlainText`.** AutoText sniffs strings for HTML; a hostile payload can
-   trigger outbound image fetches.
-4. **Every curl argv carries `--max-time` and `--max-filesize`.** An
-   unbounded body freezes the shell's UI thread on `JSON.parse`.
-5. **The pill never silently vanishes.** An unreachable API reads as
-   loading, not widget-gone. Return `""` from `label` only when the widget is
-   legitimately quiet.
-6. **Omakase constants over settings knobs.** Add a manifest settings schema
-   only for choices a user genuinely owns.
-7. **No em dashes, no private names, no stray tildes in anything shipped.**
-
-## Pre-submit checklist
-
-On the dev box:
+Choose a workspace inside your home directory, or set `FOUNDRY_ALLOWED_ROOT`
+to an explicit development root. Review the dry-run output first.
 
 ```bash
-node --test tests/           # unit suite green
-~/.contribute-system/bin/gate-runner.sh omarchy-submit "$(pwd)"   # must PASS
+omarchy-foundry create \
+  --workspace "$HOME/Projects" \
+  --id io.github.you.hello-widget \
+  --name "Hello Widget" \
+  --description "A small local bar widget" \
+  --dry-run
 ```
 
-On an Omarchy rig (the validator and qmllint live there):
+Remove `--dry-run` only after reviewing the target path. The generated project
+is not installed. Run its tests and `omarchy plugin validate .`, then inspect
+the diff before deciding whether to install it.
+
+## Install Foundry
 
 ```bash
-omarchy-plugin-validate .
-qmllint *.qml
-# install, render, screenshot the pill + open panel for preview.png
+omarchy plugin add https://github.com/jeremylongshore/omarchy-foundry-entry --enable
 ```
 
-Only then draft the marketplace submission issue, and have a human approve
-the body before posting.
+The panel displays a receipt and the terminal command. It does not expose an
+arbitrary command field, because Omarchy plugins share the long-running shell
+process and run with the current user permissions.
+
+## Development
+
+```bash
+npm test
+bash scripts/run-plugin-gates.sh .
+bash scripts/rig-verify.sh .
+bash scripts/rig-render.sh . preview.png
+```
+
+The last two commands use a configured rig. A missing rig is `UNPROVEN`, not a
+pass.
 
 ## License
 

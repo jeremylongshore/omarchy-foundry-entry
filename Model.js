@@ -1,16 +1,5 @@
-// Data layer: pure parse/format functions over raw API responses. No QML or
-// network access here — the same file loads in Quickshell (via
-// `import "Model.js" as Model`) and in node for the unit suite.
-//
-// TEMPLATE: replace parseExample/pillText/tooltipText with your real data
-// functions. Keep clean() and route EVERY api string through it.
-
-// Sanitize every string that comes from an API before it reaches a QML Text.
-// Two reasons: (1) a first-party bar label renders as Qt AutoText, which
-// promotes an HTML-looking string to StyledText — an `<img src=...>` in an
-// API field would make the shell process fetch a URL; stripping angle
-// brackets defuses that. (2) A pathologically long field is a layout-cost
-// problem, so cap it.
+// Pure receipt parsing. This module has no process or network access, so it
+// loads in Quickshell and the offline node suite.
 function clean(value, max) {
   var s = String(value === undefined || value === null ? "" : value)
   s = s.replace(/[<>]/g, "").replace(/[\x00-\x1f\x7f]/g, "")
@@ -18,36 +7,38 @@ function clean(value, max) {
   return s.length > cap ? s.slice(0, cap) : s
 }
 
-// TEMPLATE: parse a raw response body into display rows. Malformed input
-// returns [] so the panel keeps last-good state.
-function parseExample(raw) {
+function parseReceipt(raw) {
   var data
-  try { data = JSON.parse(String(raw || "")) } catch (e) { return [] }
-  if (!data || !data.length) return []
-  var out = []
-  for (var i = 0; i < data.length; i++) {
-    out.push({
-      name: clean(data[i].name, 32),
-      value: clean(data[i].value, 16)
-    })
+  try { data = JSON.parse(String(raw || "")) } catch (e) { return emptyReceipt() }
+  if (!data || typeof data !== "object") return emptyReceipt()
+  return {
+    ready: data.ready === true,
+    template: clean(data.template, 48),
+    workspace: clean(data.workspace, 80),
+    message: clean(data.message, 120),
+    capabilities: clean(data.capabilities, 80),
+    proof: clean(data.proof, 48)
   }
-  return out
 }
 
-// TEMPLATE: the bar pill text for the current state.
-function pillText(rows) {
-  return rows && rows.length ? clean(rows[0].name, 24) : ""
+function emptyReceipt() {
+  return { ready: false, template: "", workspace: "", message: "Waiting for Foundry", capabilities: "", proof: "UNPROVEN" }
 }
 
-// TEMPLATE: the pill tooltip.
-function tooltipText(rows) {
-  return rows && rows.length ? rows.length + " item(s)" : ""
+function pillText(receipt) {
+  if (!receipt || !receipt.ready) return "FOUNDRY"
+  return receipt.proof === "READY" ? "FOUNDRY READY" : "FOUNDRY DRAFT"
+}
+
+function tooltipText(receipt) {
+  return receipt && receipt.message ? clean(receipt.message, 120) : "Open Foundry"
 }
 
 if (typeof module !== "undefined") {
   module.exports = {
     clean: clean,
-    parseExample: parseExample,
+    parseReceipt: parseReceipt,
+    emptyReceipt: emptyReceipt,
     pillText: pillText,
     tooltipText: tooltipText
   }

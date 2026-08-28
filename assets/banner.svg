@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" role="img" aria-labelledby="title desc">
+  <title id="title">Foundry</title>
+  <desc id="desc">A blue anvil and proof receipt for an Omarchy plugin builder</desc>
+  <rect width="1280" height="360" fill="#10151d"/>
+  <path d="M104 248h318l-38 48H142z" fill="#354b66"/>
+  <path d="M174 238c0-68 56-123 124-123h72l60 55H298c-27 0-49 22-49 49v19z" fill="#77b8ff"/>
+  <rect x="560" y="74" width="560" height="212" rx="18" fill="none" stroke="#77b8ff" stroke-width="10"/>
+  <path d="m620 145 24 24 48-56M620 214h250M620 248h180" fill="none" stroke="#77b8ff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="930" y="246" fill="#77b8ff" font-family="sans-serif" font-size="32" text-anchor="end">PROOF FIRST</text>
+</svg>

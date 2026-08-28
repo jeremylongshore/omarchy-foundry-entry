@@ -9,7 +9,7 @@ project uses Semantic Versioning.
 Regenerate after a release with:
 
 ```bash
-scripts/gen-changelog.py . "<Plugin Name>" "<version>"
+scripts/gen-changelog.sh . "<Plugin Name>" "<version>"
 ```
 
 The generator normalises em and en dashes, because a changelog is shipped prose
@@ -17,7 +17,10 @@ and gate c28 refuses them.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Proof-first local scaffold CLI with dry-run and workspace boundaries.
+- Foundry receipt panel, offline command-boundary tests, SVG banner, and rig preview.
 
 ## [1.0.0] - unreleased
 

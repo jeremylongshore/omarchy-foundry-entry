@@ -5,11 +5,9 @@ import qs.Ui
 // Bar host. Mirrors the first-party split: this widget owns the bar slot and
 // pill button; Panel.qml owns data, lifecycle, and the popup.
 //
-// TEMPLATE: change moduleName to your plugin id. Everything else in this file
-// is the shape contract the shell expects and should not need edits.
 BarWidget {
   id: root
-  moduleName: "io.github.YOURNAME.widget-name"
+  moduleName: "io.github.jeremylongshore.foundry"
 
   function injectPanel() {
     var target = panelLoader.item
@@ -46,8 +44,7 @@ BarWidget {
     if (panelLoader.item) panelLoader.item.closeForPopoutSwitch()
   }
 
-  // Collapse the slot entirely when the panel has nothing to say.
-  visible: panelLoader.item && panelLoader.item.label !== ""
+  visible: true
   implicitWidth: visible ? button.implicitWidth : 0
   implicitHeight: button.implicitHeight
 
