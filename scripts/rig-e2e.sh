@@ -38,8 +38,14 @@ mkdir -p "$rig_home" "$runtime" "$workspace/projects"
 chmod 700 "$rig_home" "$runtime" "$workspace" "$workspace/projects"
 export HOME="$rig_home" XDG_RUNTIME_DIR="$runtime"
 
-omarchy plugin add "$repo" --yes
 foundry="$HOME/.config/omarchy/plugins/$foundry_id"
+if ! omarchy plugin add "$repo" --yes; then
+  # Current Omarchy add clones and validates before its unconditional live-shell
+  # rescan. In this isolated pre-shell phase, that final rescan is expected to
+  # fail; accept only the already-validated target at the exact declared id.
+  test -f "$foundry/manifest.json"
+  test "$(jq -r '.id' "$foundry/manifest.json")" = "$foundry_id"
+fi
 test -x "$foundry/bin/omarchy-foundry"
 foundry_commit=$(git -C "$foundry" rev-parse HEAD)
 
@@ -68,7 +74,11 @@ git -C "$generated" config user.name "Foundry E2E"
 git -C "$generated" add .
 git -C "$generated" commit -qm generated
 generated_commit=$(git -C "$generated" rev-parse HEAD)
-omarchy plugin add "file://$generated" --yes
+generated_install="$HOME/.config/omarchy/plugins/$generated_id"
+if ! omarchy plugin add "file://$generated" --yes; then
+  test -f "$generated_install/manifest.json"
+  test "$(jq -r '.id' "$generated_install/manifest.json")" = "$generated_id"
+fi
 omarchy plugin list --json | grep -F "$generated_id" >/dev/null
 
 mkdir -p "$HOME/.config/omarchy"
