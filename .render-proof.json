@@ -1,0 +1,36 @@
+{
+  "fingerprint": "b3a8ae933cd7768ea784dd211e6b683d1744eb64c5c76edf34628d4e3928a681",
+  "sourceCommit": "59b861d7340af64e6fda52387128f4a86ed540e4",
+  "sourceDirty": false,
+  "sourcePackageSha256": "6b1bafcfebc804910812132f92ba45ffaf69c5db4b0c5c007468312ce119091a",
+  "remotePackageSha256": "6b1bafcfebc804910812132f92ba45ffaf69c5db4b0c5c007468312ce119091a",
+  "rig": "intent-ops-buzz/omarchy-rig",
+  "runId": "foundry-118983",
+  "rawShellLogSha256": "73972e26446d5de863c86b497fed43db7f93eaf37878a9a2d852b378b4b62c38",
+  "doctorReceiptSha256": "f75c779eabcd0d01205514fdbeba42e02b086ef9bb4c8ab02b0bdfd072eeda85",
+  "packageBoundary": "runtime tree only; receipts, tests, developer scripts, reports, and preview excluded",
+  "evidenceBoundary": "isolated real Omarchy shell and unchanged production generator, doctor receipt, Model, bar, and panel under a dedicated headless compositor; live IPC toggle; direct full-frame grim capture with no crop or image post-processing",
+  "fixture": "no product fixture branch; panel reads the shipped doctor receipt",
+  "primaryAction": "Foundry doctor receipt rendered and panel opened through live IPC",
+  "storyEvidence": {
+    "template": "proof-first-bar-widget-v2",
+    "proof": "UNPROVEN",
+    "capabilities": "scaffold plus tests and CI"
+  },
+  "outputScale": 1.5,
+  "visualInspection": {
+    "status": "approved",
+    "previewSha256": "034a55913734872ca20f8e8fb790ce6cc913eb43fe3b3beec613a65ec9ca511e",
+    "inspector": "jeremylongshore",
+    "inspectedAt": "2026-08-30T03:02:39Z",
+    "checks": [
+      "product value visible at marketplace scale",
+      "no primary content clipped",
+      "plugin-specific visual identity"
+    ]
+  },
+  "previewSha256": "034a55913734872ca20f8e8fb790ce6cc913eb43fe3b3beec613a65ec9ca511e",
+  "dimensions": "1280 x 720",
+  "nonblackCoverage": 0.689453,
+  "capturedAt": "2026-08-30T03:02:20Z"
+}
