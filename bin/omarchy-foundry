@@ -1,89 +1,297 @@
-#!/usr/bin/env bash
-# Foundry's trusted local control plane. It intentionally accepts structured
-# fields only. No prompt, README, model response, or copied code is executed.
-set -euo pipefail
+#!/usr/bin/perl
+# Foundry's local control plane. Generation is descriptor-bound so a workspace,
+# parent, temporary tree, or target swapped during creation cannot redirect a
+# write outside the pinned directory or turn a fresh project into an overwrite.
+use strict;
+use warnings;
 
-SELF_DIR="$(cd "$(dirname "$0")" && pwd -P)"
-ACTION="${1:-doctor}"
-shift || true
+use Cwd qw(realpath);
+use Digest::SHA qw(sha256_hex);
+use Fcntl qw(:DEFAULT :mode);
+use IO::Handle;
+use JSON::PP qw(encode_json);
+use File::Spec;
+use Time::HiRes qw(sleep);
 
-fail() { printf '%s\n' "foundry: $*" >&2; exit 2; }
-need() { command -v "$1" >/dev/null 2>&1 || fail "requires $1"; }
-need jq
+require "syscall.ph";
+umask 0077;
 
-safe_root() {
-  local root="${FOUNDRY_ALLOWED_ROOT:-$HOME}"
-  [[ -d "$root" ]] || fail "allowed workspace root does not exist"
-  cd "$root" && pwd -P
+my $MAX_DESCRIPTION = 500;
+my $MAX_DESCRIPTION_FILE = 502;
+my $RENAME_NOREPLACE = 1;
+my @created_files;
+my @created_dirs;
+my ($workspace_fh, $temp_fh, $temp_name, $published);
+
+sub fail {
+    my ($message) = @_;
+    die "foundry: $message\n";
 }
 
-inside_root() {
-  local root="$1" target="$2"
-  [[ "$target" == "$root" || "$target" == "$root"/* ]]
+sub clean_error {
+    my ($error) = @_;
+    $error =~ s/\s+\z//;
+    $error =~ s/^foundry:\s*//;
+    print STDERR "foundry: $error\n";
+    exit 2;
 }
 
-doctor() {
-  local root template message ready
-  root="$(safe_root)"
-  template="bundled-bar-widget-v1"
-  ready=true
-  message="Ready to create a local draft. Foundry never installs or publishes automatically."
-  jq -nc --arg template "$template" --arg workspace "$root" --arg message "$message" \
-    '{ready:true,template:$template,workspace:$workspace,message:$message,capabilities:"scaffold only",proof:"UNPROVEN"}'
+sub pause_ms {
+    my ($name) = @_;
+    my $ms = $ENV{$name} // 0;
+    return unless $ms =~ /\A\d{1,5}\z/ && $ms > 0;
+    sleep($ms / 1000);
 }
 
-write_plugin() {
-  local target="$1" id="$2" name="$3" description="$4"
-  mkdir -p "$target/tests" "$target/assets"
-  jq -nc --arg id "$id" --arg name "$name" --arg description "$description" '
-    {schemaVersion:1,id:$id,name:$name,version:"0.1.0",author:"Your name",license:"MIT",description:$description,
-     kinds:["bar-widget"],entryPoints:{barWidget:"BarWidget.qml"},
-     barWidget:{displayName:$name,description:$description,category:"Developer Tools",aliases:[],allowMultiple:false}}' > "$target/manifest.json"
-  cat > "$target/BarWidget.qml" <<'EOF'
+sub valid_id {
+    my ($id) = @_;
+    return defined($id)
+        && $id =~ /\Aio\.github\.[a-z0-9][a-z0-9-]{0,62}\.[a-z0-9][a-z0-9-]{0,62}\z/;
+}
+
+sub valid_single_line {
+    my ($value, $max) = @_;
+    return defined($value)
+        && length($value) > 0
+        && length($value) <= $max
+        && $value !~ /[\x00-\x1f\x7f<>]/;
+}
+
+sub same_dir {
+    my ($opened, $named) = @_;
+    return @$opened && @$named
+        && $opened->[0] == $named->[0]
+        && $opened->[1] == $named->[1]
+        && S_ISDIR($opened->[2]) && S_ISDIR($named->[2]);
+}
+
+sub pin_abs_dir {
+    my ($full) = @_;
+    fail("directory path must be absolute")
+        unless File::Spec->file_name_is_absolute($full);
+    my @parts = grep { length($_) } File::Spec->splitdir($full);
+    fail("unsafe directory component") if grep { $_ eq '.' || $_ eq '..' } @parts;
+
+    my $current;
+    sysopen($current, '/', O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
+        or fail("cannot pin filesystem root");
+    my @chain = ($current);
+    for my $part (@parts) {
+        chdir($current) or fail("cannot traverse directory");
+        my $next;
+        sysopen($next, $part, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
+            or fail("directory contains a missing or linked component");
+        my @st = stat($next);
+        fail("unsafe directory component")
+            unless @st && S_ISDIR($st[2]);
+        push @chain, $next;
+        $current = $next;
+    }
+    my @final = stat($current);
+    fail("final directory must be owned by the current user")
+        unless @final && $final[4] == $<;
+    chdir($current) or fail("cannot retain directory descriptor");
+    return (\@chain, $current);
+}
+
+sub bounded_description_file {
+    my ($path) = @_;
+    fail("description file path is required") unless defined($path) && length($path);
+    my $fh;
+    sysopen($fh, $path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK)
+        or fail("cannot open description file");
+    my @st = stat($fh);
+    fail("description file must be a same-owner regular file")
+        unless @st && S_ISREG($st[2]) && $st[4] == $< && $st[7] <= $MAX_DESCRIPTION_FILE;
+    my $raw = '';
+    while (length($raw) <= $MAX_DESCRIPTION_FILE) {
+        my $n = sysread($fh, my $chunk, 512);
+        fail("cannot read description file") unless defined($n);
+        last if $n == 0;
+        $raw .= $chunk;
+    }
+    fail("description file exceeds bound") if length($raw) > $MAX_DESCRIPTION_FILE;
+    $raw =~ s/\r?\n\z//;
+    return $raw;
+}
+
+sub xml_escape {
+    my ($value) = @_;
+    $value =~ s/&/&amp;/g;
+    $value =~ s/"/&quot;/g;
+    $value =~ s/'/&apos;/g;
+    $value =~ s/</&lt;/g;
+    $value =~ s/>/&gt;/g;
+    return $value;
+}
+
+sub palette {
+    my ($id) = @_;
+    my $digest = pack('H*', sha256_hex($id));
+    my @byte = unpack('C*', $digest);
+    my $accent = sprintf('#%02x%02x%02x',
+        72 + $byte[0] % 136, 72 + $byte[1] % 136, 72 + $byte[2] % 136);
+    my $secondary = sprintf('#%02x%02x%02x',
+        56 + $byte[3] % 112, 56 + $byte[4] % 112, 56 + $byte[5] % 112);
+    return ($accent, $secondary);
+}
+
+sub write_new_file {
+    my ($relative, $content, $mode) = @_;
+    my $fh;
+    sysopen($fh, $relative, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, $mode)
+        or fail("cannot create generated file $relative");
+    print {$fh} $content or fail("cannot write generated file $relative");
+    $fh->flush or fail("cannot flush generated file $relative");
+    $fh->sync or fail("cannot sync generated file $relative");
+    close($fh) or fail("cannot close generated file $relative");
+    push @created_files, $relative;
+}
+
+sub make_dir {
+    my ($relative) = @_;
+    mkdir($relative, 0700) or fail("cannot create generated directory $relative");
+    push @created_dirs, $relative;
+}
+
+sub clean_temp {
+    return if $published || !$temp_fh || !$workspace_fh || !$temp_name;
+    chdir($temp_fh) or return;
+    for my $file (reverse @created_files) {
+        unlink($file);
+    }
+    for my $dir (sort { length($b) <=> length($a) } @created_dirs) {
+        rmdir($dir);
+    }
+    chdir($workspace_fh) or return;
+    rmdir($temp_name);
+}
+
+sub random_suffix {
+    my $fh;
+    sysopen($fh, '/dev/urandom', O_RDONLY | O_NOFOLLOW)
+        or fail("cannot open random source");
+    sysread($fh, my $raw, 12) == 12 or fail("cannot read random source");
+    return unpack('H*', $raw);
+}
+
+sub generated_files {
+    my ($id, $name, $description) = @_;
+    my ($accent, $secondary) = palette($id);
+    my $xml_name = xml_escape($name);
+    my $xml_desc = xml_escape($description);
+    my $manifest = JSON::PP->new->canonical->pretty->encode({
+        schemaVersion => 1,
+        id => $id,
+        name => $name,
+        version => '0.1.0',
+        author => 'Your name',
+        license => 'MIT',
+        description => $description,
+        kinds => ['bar-widget'],
+        entryPoints => { barWidget => 'BarWidget.qml' },
+        barWidget => {
+            displayName => $name,
+            description => $description,
+            category => 'Developer Tools',
+            aliases => [],
+            allowMultiple => JSON::PP::false,
+        },
+    });
+
+    my $bar = <<"QML";
 import QtQuick
 import qs.Commons
 import qs.Ui
+
 BarWidget {
   id: root
-  moduleName: "REPLACE_MODULE_ID"
+  moduleName: "$id"
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
-  WidgetButton { id: button; anchors.fill: parent; bar: root.bar; text: "DRAFT"; tooltipText: "Generated by Foundry" }
+
+  WidgetButton {
+    id: button
+    anchors.fill: parent
+    bar: root.bar
+    text: "DRAFT"
+    tooltipText: "$name: generated locally, review before publishing"
+    Accessible.role: Accessible.Button
+    Accessible.name: "Open $name draft"
+  }
 }
-EOF
-  sed -i "s/REPLACE_MODULE_ID/$id/g" "$target/BarWidget.qml"
-  cat > "$target/Model.js" <<'EOF'
+QML
+
+    my $model = <<'JS';
 function clean(value, max) {
   var s = String(value === undefined || value === null ? "" : value)
   s = s.replace(/[<>]/g, "").replace(/[\x00-\x1f\x7f]/g, "")
   return s.length > (max || 64) ? s.slice(0, max || 64) : s
 }
 if (typeof module !== "undefined") module.exports = { clean: clean }
-EOF
-  cat > "$target/tests/model.test.js" <<'EOF'
+JS
+
+    my $model_test = <<'JS';
 const test = require("node:test")
 const assert = require("node:assert/strict")
 const Model = require("../Model.js")
+
 test("clean removes markup and control characters", () => {
-  assert.equal(Model.clean("<b>x</b>\u0000"), "bX/b".replace("X", "x"))
+  assert.equal(Model.clean("<b>x</b>\u0000"), "bx/b")
 })
-EOF
-  jq -nc --arg name "$(basename "$target")" '{name:$name,private:true,version:"0.1.0",scripts:{test:"node --test tests/*.test.js"}}' > "$target/package.json"
-  cat > "$target/README.md" <<EOF
+JS
+
+    my $contract_test = <<'JS';
+const test = require("node:test")
+const assert = require("node:assert/strict")
+const fs = require("node:fs")
+const path = require("node:path")
+
+const root = path.join(__dirname, "..")
+const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"))
+const banner = fs.readFileSync(path.join(root, "assets", "banner.svg"), "utf8")
+
+test("marketplace copy uses the complete catalog allowance", () => {
+  assert.equal(manifest.description.length, 500)
+  assert.equal(manifest.barWidget.description.length, 500)
+})
+
+test("the generated banner names this plugin and has authored graphics", () => {
+  assert.ok(banner.includes(manifest.name))
+  assert.match(banner, /<(?:path|circle)\b/)
+  assert.match(banner, /aria-labelledby=/)
+})
+JS
+
+    my $package = JSON::PP->new->canonical->pretty->encode({
+        name => lc($name =~ s/[^A-Za-z0-9]+/-/gr),
+        private => JSON::PP::true,
+        version => '0.1.0',
+        scripts => { test => 'node --test tests/*.test.js' },
+    });
+
+    my $readme = <<"MD";
+<p align="center"><img src="assets/banner.svg" alt="$name" width="100%"></p>
+
 # $name
 
 $description
 
-Generated locally by Foundry. This is a starter plugin tree, not a Git repository.
-Review every file before installation or publication.
+Generated locally by Foundry as an inspectable draft, not an installed plugin
+and not a published repository. Review every file and replace the placeholder
+author before creating a Git repository.
 
-## Development
+## Verify
 
-Run \`npm test\`, then \`omarchy plugin validate .\`. Install only after reviewing the diff.
+\`\`\`bash
+npm test
+omarchy plugin validate .
+qmllint *.qml
+\`\`\`
 
 ## Install
 
-Publish this reviewed tree to a Git repository, then install it with:
+Publish the reviewed tree to Git, then run:
 
 \`omarchy plugin add <git-url> --enable\`
 
@@ -91,12 +299,21 @@ Publish this reviewed tree to a Git repository, then install it with:
 
 \`omarchy plugin remove $id\`
 
-## Runtime dependencies
+## Runtime
 
-The widget uses Omarchy's Quickshell APIs only. Node runs the offline test suite
-and is not required at runtime.
-EOF
-  cat > "$target/LICENSE" <<'EOF'
+The widget uses Omarchy's Quickshell APIs only. Node is an offline test runner
+and is not required by the graphical session.
+MD
+
+    my $security = <<'MD';
+# Security
+
+This generated draft has no network, account, token, telemetry, state file, or
+external runtime. It renders static authored text in a stock Omarchy shell.
+Review all generated files and rerun the validator before installation.
+MD
+
+    my $license = <<'TXT';
 MIT License
 
 Copyright (c) 2026
@@ -105,49 +322,186 @@ Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files, to deal in the Software
 without restriction, including without limitation the rights to use, copy,
 modify, merge, publish, distribute, sublicense, and/or sell copies.
-EOF
-  cat > "$target/assets/banner.svg" <<'EOF'
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" role="img" aria-labelledby="title desc"><title id="title">Foundry generated plugin</title><desc id="desc">A blue geometric starter banner</desc><rect width="1280" height="360" fill="#10151d"/><path d="M120 270 300 90l180 180-180 0z" fill="#77b8ff"/><path d="M580 90h520v180H580z" fill="none" stroke="#77b8ff" stroke-width="12"/><path d="M620 180h360" stroke="#354b66" stroke-width="12"/></svg>
-EOF
+TXT
+
+    my $banner = <<"SVG";
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 360" width="1280" height="360" role="img" aria-labelledby="title desc">
+  <title id="title">$xml_name</title>
+  <desc id="desc">$xml_desc</desc>
+  <rect width="1280" height="360" fill="#0b1018"/>
+  <path d="M0 280 C220 160 320 330 520 190 S900 80 1280 210 V360 H0Z" fill="$secondary" opacity="0.28"/>
+  <circle cx="174" cy="180" r="92" fill="none" stroke="$accent" stroke-width="14"/>
+  <path d="M116 184h116M174 122v116" stroke="$accent" stroke-width="14" stroke-linecap="round"/>
+  <text x="314" y="174" fill="#f2f5f8" font-family="monospace" font-size="64" font-weight="700">$xml_name</text>
+  <text x="318" y="224" fill="$accent" font-family="monospace" font-size="22">LOCALLY FORGED · INSPECTABLE · UNPROVEN UNTIL TESTED</text>
+</svg>
+SVG
+
+    my $workflow = <<'YAML';
+name: test
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: npm test
+      - run: jq -e '.description | length == 500' manifest.json
+      - run: jq -e '.barWidget.description | length == 500' manifest.json
+YAML
+
+    return {
+        'manifest.json' => $manifest,
+        'BarWidget.qml' => $bar,
+        'Model.js' => $model,
+        'README.md' => $readme,
+        'SECURITY.md' => $security,
+        'LICENSE' => $license,
+        'package.json' => $package,
+        'assets/banner.svg' => $banner,
+        'tests/model.test.js' => $model_test,
+        'tests/contract.test.js' => $contract_test,
+        '.github/workflows/test.yml' => $workflow,
+    };
 }
 
-create() {
-  local workspace="" id="" name="" description="" dry=false root target temp
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --workspace) workspace="${2:-}"; shift 2 ;;
-      --id) id="${2:-}"; shift 2 ;;
-      --name) name="${2:-}"; shift 2 ;;
-      --description) description="${2:-}"; shift 2 ;;
-      --dry-run) dry=true; shift ;;
-      *) fail "unknown create option: $1" ;;
-    esac
-  done
-  [[ -n "$workspace" && -n "$id" && -n "$name" && -n "$description" ]] || fail "create requires workspace, id, name, and description"
-  [[ "$id" =~ ^io\.github\.[a-z0-9-]+\.[a-z0-9-]+$ ]] || fail "id must look like io.github.owner.plugin"
-  [[ ${#name} -le 48 && ${#description} -le 160 ]] || fail "name or description is too long"
-  [[ "$name" != *$'\n'* && "$name" != *$'\r'* && "$description" != *$'\n'* && "$description" != *$'\r'* ]] || fail "name and description must be single-line text"
-  [[ "$name" != *'<'* && "$name" != *'>'* && "$description" != *'<'* && "$description" != *'>'* ]] || fail "name and description cannot contain markup delimiters"
-  [[ -d "$workspace" ]] || fail "workspace does not exist"
-  workspace="$(cd "$workspace" && pwd -P)"
-  root="$(safe_root)"
-  inside_root "$root" "$workspace" || fail "workspace must be inside the selected allowed root"
-  target="$workspace/$id"
-  [[ ! -e "$target" ]] || fail "target already exists"
-  if "$dry"; then
-    jq -nc --arg target "$target" --arg id "$id" '{ready:false,target:$target,id:$id,write:false,proof:"UNPROVEN",message:"Dry run only. No files were written."}'
-    return
-  fi
-  temp="$(mktemp -d "$workspace/.foundry.XXXXXX")"
-  trap 'rm -rf "$temp"' RETURN
-  write_plugin "$temp" "$id" "$name" "$description"
-  mv "$temp" "$target"
-  trap - RETURN
-  jq -nc --arg target "$target" --arg id "$id" '{ready:true,target:$target,id:$id,write:true,proof:"UNPROVEN",message:"Draft created. Review it before any test, install, or publish action."}'
+sub doctor {
+    my $root = realpath($ENV{FOUNDRY_ALLOWED_ROOT} // $ENV{HOME} // '')
+        or fail("allowed workspace root does not exist");
+    print encode_json({
+        ready => JSON::PP::true,
+        template => 'proof-first-bar-widget-v2',
+        workspace => $root,
+        message => 'Ready to forge a private local draft. Foundry never installs, commits, pushes, or publishes.',
+        capabilities => 'scaffold plus tests and CI',
+        proof => 'UNPROVEN',
+    }), "\n";
 }
 
-case "$ACTION" in
-  doctor) [[ "${1:-}" == "--json" || $# -eq 0 ]] || fail "doctor accepts --json"; doctor ;;
-  create) create "$@" ;;
-  *) fail "use doctor or create" ;;
-esac
+sub create_project {
+    my @args = @_;
+    my ($workspace, $id, $name, $description, $description_file, $dry);
+    while (@args) {
+        my $arg = shift @args;
+        if ($arg eq '--workspace') { $workspace = shift @args; }
+        elsif ($arg eq '--id') { $id = shift @args; }
+        elsif ($arg eq '--name') { $name = shift @args; }
+        elsif ($arg eq '--description') { $description = shift @args; }
+        elsif ($arg eq '--description-file') { $description_file = shift @args; }
+        elsif ($arg eq '--dry-run') { $dry = 1; }
+        else { fail("unknown create option: $arg"); }
+    }
+    fail("create requires workspace, id, name, and one description source")
+        unless defined($workspace) && defined($id) && defined($name)
+        && (defined($description) xor defined($description_file));
+    $description = bounded_description_file($description_file)
+        if defined($description_file);
+    fail("id must look like io.github.owner.plugin") unless valid_id($id);
+    fail("name must begin with a letter or number and use 1 to 48 safe display characters")
+        unless valid_single_line($name, 48)
+        && $name =~ /\A[A-Za-z0-9][A-Za-z0-9 ._+-]{0,47}\z/;
+    fail("description must use exactly 500 single-line characters")
+        unless valid_single_line($description, $MAX_DESCRIPTION)
+        && length($description) == $MAX_DESCRIPTION;
+
+    my $root = realpath($ENV{FOUNDRY_ALLOWED_ROOT} // $ENV{HOME} // '')
+        or fail("allowed workspace root does not exist");
+    my $workspace_real = realpath($workspace)
+        or fail("workspace does not exist");
+    fail("workspace must be inside the selected allowed root")
+        unless $workspace_real eq $root || index($workspace_real, "$root/") == 0;
+
+    my ($root_chain, $root_fh) = pin_abs_dir($root);
+    my ($workspace_chain, $pinned_workspace) = pin_abs_dir($workspace_real);
+    my @root_opened = stat($root_fh);
+    my @root_named = lstat($root);
+    my @workspace_opened = stat($pinned_workspace);
+    my @workspace_named = lstat($workspace_real);
+    fail("allowed root changed during validation")
+        unless same_dir(\@root_opened, \@root_named);
+    fail("workspace changed during validation")
+        unless same_dir(\@workspace_opened, \@workspace_named);
+    $workspace_fh = $pinned_workspace;
+    chdir($workspace_fh) or fail("cannot retain workspace");
+    fail("target already exists") if lstat($id);
+
+    if ($dry) {
+        print encode_json({
+            ready => JSON::PP::false,
+            target => "$workspace_real/$id",
+            id => $id,
+            write => JSON::PP::false,
+            proof => 'UNPROVEN',
+            message => 'Dry run only. No files were written.',
+        }), "\n";
+        return;
+    }
+
+    $temp_name = '.foundry-' . random_suffix();
+    mkdir($temp_name, 0700) or fail("cannot create private staging directory");
+    sysopen($temp_fh, $temp_name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
+        or fail("cannot pin private staging directory");
+    my @temp_opened = stat($temp_fh);
+    my @temp_named = lstat($temp_name);
+    fail("staging directory identity changed")
+        unless same_dir(\@temp_opened, \@temp_named) && $temp_opened[4] == $<;
+
+    chdir($temp_fh) or fail("cannot enter private staging directory");
+    make_dir('assets');
+    make_dir('tests');
+    make_dir('.github');
+    make_dir('.github/workflows');
+
+    my $files = generated_files($id, $name, $description);
+    for my $path (sort keys %$files) {
+        write_new_file($path, $files->{$path}, 0644);
+    }
+
+    pause_ms('FOUNDRY_TEST_BEFORE_PUBLISH_MS');
+    chdir($workspace_fh) or fail("cannot return to workspace");
+    @workspace_named = lstat($workspace_real);
+    fail("workspace changed before publication")
+        unless same_dir(\@workspace_opened, \@workspace_named);
+    @temp_named = lstat($temp_name);
+    fail("staging directory changed before publication")
+        unless same_dir(\@temp_opened, \@temp_named);
+    fail("target appeared during generation") if lstat($id);
+
+    my $rc = syscall(&SYS_renameat2, fileno($workspace_fh), $temp_name,
+        fileno($workspace_fh), $id, $RENAME_NOREPLACE);
+    fail("atomic no-replace publication failed") if $rc != 0;
+    $published = 1;
+
+    print encode_json({
+        ready => JSON::PP::true,
+        target => "$workspace_real/$id",
+        id => $id,
+        write => JSON::PP::true,
+        proof => 'UNPROVEN',
+        message => 'Draft created with tests, CI, exact marketplace copy, and a unique banner. Review before Git, install, or publication.',
+    }), "\n";
+}
+
+my $exit = eval {
+    my $action = shift(@ARGV) // 'doctor';
+    if ($action eq 'doctor') {
+        fail("doctor accepts only --json") if @ARGV && !(@ARGV == 1 && $ARGV[0] eq '--json');
+        doctor();
+    } elsif ($action eq 'create') {
+        create_project(@ARGV);
+    } else {
+        fail("use doctor or create");
+    }
+    1;
+};
+my $error = $@;
+clean_temp();
+clean_error($error) unless $exit;
+exit 0;

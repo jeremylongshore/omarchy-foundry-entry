@@ -17,12 +17,22 @@ and gate c28 refuses them.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-29
+
 ### Added
 
-- Proof-first local scaffold CLI with dry-run and workspace boundaries.
-- Foundry receipt panel, offline command-boundary tests, SVG banner, and rig preview.
+- Descriptor-pinned, race-safe Perl generator with atomic no-replace publish.
+- Exact 500-character copy enforcement for both marketplace description fields.
+- Deterministic plugin-specific SVG themes in generated projects.
+- Coverage, race repetition, mutation, accessibility, contract, audit, and Buzz
+  acceptance lanes.
 
-## [1.0.0] - unreleased
+### Changed
+
+- Rebuilt the panel as a readable forge, inspect, and prove workflow.
+- Updated the Foundry listing copy, banner contract, and pinned CI actions.
+
+## [0.1.0] - 2026-08-27
 
 ### Added
 

@@ -10,7 +10,7 @@ function clean(value, max) {
 function parseReceipt(raw) {
   var data
   try { data = JSON.parse(String(raw || "")) } catch (e) { return emptyReceipt() }
-  if (!data || typeof data !== "object") return emptyReceipt()
+  if (!data || typeof data !== "object" || Array.isArray(data)) return emptyReceipt()
   return {
     ready: data.ready === true,
     template: clean(data.template, 48),

@@ -1,0 +1,3 @@
+# Foundry is a QML frontend with a JavaScript model and a Perl generator.
+classify_pins:
+  - frontend

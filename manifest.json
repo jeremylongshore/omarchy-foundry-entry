@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "io.github.jeremylongshore.foundry",
   "name": "Foundry",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Jeremy Longshore",
   "license": "MIT",
-  "description": "A proof-first local scaffold for Omarchy plugin projects.",
+  "description": "Foundry turns an Omarchy bar-widget idea into a reviewable project with unique identity, exact marketplace copy, a plugin-specific SVG banner, offline tests, pinned CI, security guidance, and explicit install and removal commands. Its descriptor-pinned, race-safe generator stages files privately and publishes only to a new target. It never installs, enables, commits, pushes, publishes, calls AI, or reaches the network. Every draft begins UNPROVEN and must earn real-shell evidence before release.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Foundry",
-    "description": "Create an inspectable starter plugin and see what has actually been proven.",
+    "description": "Foundry turns an Omarchy bar-widget idea into a reviewable project with unique identity, exact marketplace copy, a plugin-specific SVG banner, offline tests, pinned CI, security guidance, and explicit install and removal commands. Its descriptor-pinned, race-safe generator stages files privately and publishes only to a new target. It never installs, enables, commits, pushes, publishes, calls AI, or reaches the network. Every draft begins UNPROVEN and must earn real-shell evidence before release.",
     "category": "Developer Tools",
     "aliases": [
       "foundry",

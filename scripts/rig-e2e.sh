@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Prove the published Foundry artifact can generate, install, and load a
-# starter plugin on the Buzz Omarchy rig. This is intentionally separate from
-# rig-render: it tests the generated artifact, not merely Foundry's own panel.
+# Prove the exact published Foundry commit can generate, validate, install, and
+# load a disposable starter inside an isolated Buzz Omarchy session.
 set -euo pipefail
 
 TARGET="$(cd "$(dirname "$0")/.." && pwd)"
@@ -9,42 +8,56 @@ HOST="${OMARCHY_RIG_HOST:-intent-ops-buzz}"
 CONTAINER="${OMARCHY_RIG_CONTAINER:-omarchy-rig}"
 COMMIT="$(git -C "$TARGET" rev-parse HEAD)"
 RECEIPT="$TARGET/.rig-e2e-proof.json"
+RUN_ID="foundry-e2e-$$"
 
-RESULT="$(ssh "$HOST" "docker exec -i $CONTAINER sh -s" <<'REMOTE'
+RESULT="$(ssh -o BatchMode=yes "$HOST" "docker exec -i $CONTAINER sh -s -- '$RUN_ID'" <<'REMOTE'
 set -eu
-export XDG_RUNTIME_DIR=/tmp/xdgrt WAYLAND_DISPLAY=wayland-1 OMARCHY_PATH=/root/omarchy PATH=/root/omarchy/bin:$PATH
+run_id="$1"
+export OMARCHY_PATH=/root/omarchy PATH=/root/omarchy/bin:/usr/bin:/bin
 repo=https://github.com/jeremylongshore/omarchy-foundry-entry.git
 foundry_id=io.github.jeremylongshore.foundry
 generated_id=io.github.e2e.generated
+rig_home=/tmp/"$run_id"-home
+runtime=/tmp/"$run_id"-runtime
+workspace=/tmp/"$run_id"-workspace
+sway_config=/tmp/"$run_id"-sway.conf
+sway_log=/tmp/"$run_id"-sway.log
+qs_log=/tmp/"$run_id"-qs.log
+shot=/tmp/"$run_id".png
+qs_pid=""; sway_pid=""
 
-remove_id() {
-  wanted="$1"
-  for existing in /root/.config/omarchy/plugins/*; do
-    [ -f "$existing/manifest.json" ] || continue
-    [ "$(jq -r '.id // empty' "$existing/manifest.json")" = "$wanted" ] || continue
-    rm -rf "$existing"
+cleanup() {
+  [ -z "$qs_pid" ] || kill "$qs_pid" 2>/dev/null || true
+  [ -z "$sway_pid" ] || kill "$sway_pid" 2>/dev/null || true
+  for path in "$rig_home" "$runtime" "$workspace"; do
+    [ ! -d "$path" ] || find "$path" -depth -delete
   done
 }
-remove_id "$foundry_id"
-remove_id "$generated_id"
+trap cleanup EXIT INT TERM
+mkdir -p "$rig_home" "$runtime" "$workspace/projects"
+chmod 700 "$rig_home" "$runtime" "$workspace" "$workspace/projects"
+export HOME="$rig_home" XDG_RUNTIME_DIR="$runtime"
+
 omarchy plugin add "$repo" --enable --yes
-foundry=/root/.config/omarchy/plugins/$foundry_id
+foundry="$HOME/.config/omarchy/plugins/$foundry_id"
 test -x "$foundry/bin/omarchy-foundry"
 foundry_commit=$(git -C "$foundry" rev-parse HEAD)
 
-root=$(mktemp -d /tmp/foundry-e2e-XXXXXX)
-trap 'rm -rf "$root"' EXIT
-mkdir "$root/workspace"
-FOUNDRY_ALLOWED_ROOT="$root" "$foundry/bin/omarchy-foundry" create \
-  --workspace "$root/workspace" \
+# Reuse the repository's audited 500-character prose only as bounded E2E input.
+# The generated project remains disposable and never enters the marketplace.
+jq -r '.description' "$foundry/manifest.json" > "$workspace/description.txt"
+FOUNDRY_ALLOWED_ROOT="$workspace" "$foundry/bin/omarchy-foundry" create \
+  --workspace "$workspace/projects" \
   --id "$generated_id" \
   --name "Generated E2E" \
-  --description "A disposable generated starter"
-generated="$root/workspace/$generated_id"
+  --description-file "$workspace/description.txt"
+generated="$workspace/projects/$generated_id"
 test -f "$generated/manifest.json"
 test -f "$generated/assets/banner.svg"
+jq -e '.description | length == 500' "$generated/manifest.json" >/dev/null
+jq -e '.barWidget.description | length == 500' "$generated/manifest.json" >/dev/null
+grep -F '<title id="title">Generated E2E</title>' "$generated/assets/banner.svg" >/dev/null
 
-# Node is a development-only test runner; the subsequent shell load shadows it.
 /usr/bin/node --test "$generated"/tests/*.test.js
 /root/omarchy/bin/omarchy-plugin-validate "$generated"
 /usr/lib/qt6/bin/qmllint "$generated/BarWidget.qml"
@@ -58,52 +71,77 @@ generated_commit=$(git -C "$generated" rev-parse HEAD)
 omarchy plugin add "file://$generated" --enable --yes
 omarchy plugin list --json | grep -F "$generated_id" | grep -F enabled >/dev/null
 
-# A stock graphical session does not need Node. Put a failing node first on the
-# path and prove the generated plugin still loads in a real shell.
-mkdir -p /tmp/foundry-nonode
-printf '#!/bin/sh\nexit 127\n' >/tmp/foundry-nonode/node
-chmod 755 /tmp/foundry-nonode/node
-if [ ! -e "$XDG_RUNTIME_DIR/wayland-1" ]; then
-  WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman sway >/tmp/foundry-e2e-sway.log 2>&1 &
-  sleep 6
-fi
-pkill -f 'qs -p' 2>/dev/null || true
-PATH=/tmp/foundry-nonode:/root/omarchy/bin:/usr/bin:/bin qs -p /root/omarchy/shell >/tmp/foundry-generated-qs.log 2>&1 &
-sleep 18
-test -s /tmp/foundry-generated-qs.log || true
-if grep -a -iE 'cannot assign|is not a type|unable to|no such|ERROR' /tmp/foundry-generated-qs.log | grep -aviE 'libEGL|MESA|ZINK|pipewire|pw_loop_new|pw\.loop|UPower|hyprland' >/dev/null; then
+mkdir -p "$HOME/.config/omarchy"
+cat > "$HOME/.config/omarchy/shell.json" <<JSON
+{"version":1,"bar":{"position":"top","transparent":false,"centerAnchor":"$generated_id",
+"layout":{"left":[{"id":"omarchy.workspaces"}],"center":[],
+"right":[{"id":"$generated_id"}]}},"plugins":[]}
+JSON
+cat > "$sway_config" <<SWAY
+output * resolution 1280x720 scale 1.5
+seat * hide_cursor 1000
+SWAY
+WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman \
+  sway --config "$sway_config" >"$sway_log" 2>&1 &
+sway_pid=$!
+wayland_socket=""; attempt=0
+while [ "$attempt" -lt 30 ]; do
+  wayland_socket=$(find "$runtime" -maxdepth 1 -type s -name 'wayland-*' | head -1)
+  [ -z "$wayland_socket" ] || break
+  attempt=$((attempt + 1)); sleep 1
+done
+[ -n "$wayland_socket" ] || { echo "rig-e2e: isolated Wayland failed" >&2; exit 1; }
+export WAYLAND_DISPLAY="${wayland_socket##*/}"
+export SWAYSOCK=$(find "$runtime" -maxdepth 1 -type s -name 'sway-ipc.*.sock' | head -1)
+
+# A stock graphical session does not need Node. A failing shim first on PATH
+# proves the generated QML loads without a development runtime.
+mkdir "$workspace/nonode"
+printf '#!/bin/sh\nexit 127\n' > "$workspace/nonode/node"
+chmod 700 "$workspace/nonode/node"
+PATH="$workspace/nonode:/root/omarchy/bin:/usr/bin:/bin" \
+  qs -p /root/omarchy/shell >"$qs_log" 2>&1 &
+qs_pid=$!
+sleep 14
+[ -d "/proc/$qs_pid" ] || { echo "rig-e2e: generated shell exited" >&2; exit 1; }
+if grep -a -iE 'cannot assign|is not a type|unable to|no such|ERROR' "$qs_log" \
+  | grep -aviE 'libEGL|MESA|ZINK|pipewire|pw_loop_new|pw\.loop|UPower|hyprland' >/dev/null; then
   echo "rig-e2e: generated plugin emitted a shell load error" >&2
-  grep -a -iE 'cannot assign|is not a type|unable to|no such|ERROR' /tmp/foundry-generated-qs.log >&2
   exit 1
 fi
-grim /tmp/foundry-generated.png 2>/dev/null
-test "$(wc -c </tmp/foundry-generated.png)" -ge 4000
+grim "$shot" 2>/dev/null
+test "$(wc -c < "$shot")" -ge 4000
 
-if FOUNDRY_ALLOWED_ROOT="$root" "$foundry/bin/omarchy-foundry" create \
-  --workspace "$root/workspace" \
+if FOUNDRY_ALLOWED_ROOT="$workspace" "$foundry/bin/omarchy-foundry" create \
+  --workspace "$workspace/projects" \
   --id 'io.github.e2e.bad;dispatch' \
   --name Bad \
-  --description 'Must refuse' \
+  --description-file "$workspace/description.txt" \
   --dry-run; then
   echo "rig-e2e: hostile id unexpectedly succeeded" >&2
   exit 1
 fi
 
-echo "E2E_RECEIPT installed_foundry=$foundry_commit generated_tree=$generated_commit node=shadowed hostile_id=refused shell=loaded"
+echo "E2E_RECEIPT installed_foundry=$foundry_commit generated_tree=$generated_commit node=shadowed hostile_id=refused shell=loaded descriptions=500/500 banner=unique"
 REMOTE
 )"
 
 printf '%s\n' "$RESULT"
-LINE="$(printf '%s\n' "$RESULT" | /usr/bin/grep '^E2E_RECEIPT ' || true)"
-[[ "$LINE" =~ ^E2E_RECEIPT\ installed_foundry=([0-9a-f]{40})\ generated_tree=([0-9a-f]{40})\ node=shadowed\ hostile_id=refused\ shell=loaded$ ]] || {
+LINE="$(printf '%s\n' "$RESULT" | grep '^E2E_RECEIPT ' || true)"
+[[ "$LINE" =~ ^E2E_RECEIPT\ installed_foundry=([0-9a-f]{40})\ generated_tree=([0-9a-f]{40})\ node=shadowed\ hostile_id=refused\ shell=loaded\ descriptions=500/500\ banner=unique$ ]] || {
   echo "rig-e2e: missing or malformed receipt line" >&2
   exit 1
 }
 INSTALLED_COMMIT="${BASH_REMATCH[1]}"
 GENERATED_COMMIT="${BASH_REMATCH[2]}"
-[[ "$INSTALLED_COMMIT" == "$COMMIT" ]] || { echo "rig-e2e: installed GitHub artifact ($INSTALLED_COMMIT) does not match local commit ($COMMIT)" >&2; exit 1; }
+[[ "$INSTALLED_COMMIT" == "$COMMIT" ]] || {
+  echo "rig-e2e: installed commit does not match local HEAD" >&2; exit 1; }
 
-jq -n --arg commit "$COMMIT" --arg rig "$HOST/$CONTAINER" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --arg installed "$INSTALLED_COMMIT" --arg generated "$GENERATED_COMMIT" \
-  '{commit:$commit, installedFoundryCommit:$installed, generatedTreeCommit:$generated, rig:$rig, foundryOrigin:"github", generatedOrigin:"file-git", node:"shadowed", hostileId:"refused", generatedShell:"loaded", completedAt:$at}' > "$RECEIPT"
+jq -n --arg commit "$COMMIT" --arg rig "$HOST/$CONTAINER" \
+  --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg installed "$INSTALLED_COMMIT" \
+  --arg generated "$GENERATED_COMMIT" \
+  '{commit:$commit,installedFoundryCommit:$installed,generatedTreeCommit:$generated,
+    rig:$rig,foundryOrigin:"github",generatedOrigin:"isolated file-git",
+    node:"shadowed",hostileId:"refused",generatedShell:"loaded",
+    descriptions:"500/500",bannerIdentity:"unique",completedAt:$at}' > "$RECEIPT"
 echo "rig-e2e: PASS, receipt written to $RECEIPT"

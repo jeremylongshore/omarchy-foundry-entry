@@ -1,5 +1,6 @@
 name: test
 on:
+  workflow_dispatch:
   push:
   pull_request:
 permissions:
@@ -8,8 +9,28 @@ jobs:
   unit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
-      - run: node --test tests/*.test.js
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Race-suite stability
+        run: npm run test:race
+      - name: Mutation quality floor
+        run: npm run test:mutation
+      - name: Deterministic audit profile
+        run: npm run audit
+      - name: ShellCheck developer, rig, and hook scripts
+        run: shellcheck --severity=warning scripts/*.sh e2e/*.sh .githooks/pre-push
+      - name: Perl generator and JavaScript syntax
+        run: |
+          perl -c bin/omarchy-foundry
+          for f in $(git ls-files '*.js'); do node --check "$f"; done
+      - name: Marketplace contract and no symlinks
+        run: |
+          jq -e '.version == "0.2.0"' manifest.json
+          jq -e '.description | length == 500' manifest.json
+          jq -e '.barWidget.description | length == 500' manifest.json
+          test -z "$(find . -type l -not -path './.git/*' -not -path './node_modules/*')"
