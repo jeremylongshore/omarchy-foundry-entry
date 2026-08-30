@@ -38,7 +38,7 @@ mkdir -p "$rig_home" "$runtime" "$workspace/projects"
 chmod 700 "$rig_home" "$runtime" "$workspace" "$workspace/projects"
 export HOME="$rig_home" XDG_RUNTIME_DIR="$runtime"
 
-omarchy plugin add "$repo" --enable --yes
+omarchy plugin add "$repo" --yes
 foundry="$HOME/.config/omarchy/plugins/$foundry_id"
 test -x "$foundry/bin/omarchy-foundry"
 foundry_commit=$(git -C "$foundry" rev-parse HEAD)
@@ -68,8 +68,8 @@ git -C "$generated" config user.name "Foundry E2E"
 git -C "$generated" add .
 git -C "$generated" commit -qm generated
 generated_commit=$(git -C "$generated" rev-parse HEAD)
-omarchy plugin add "file://$generated" --enable --yes
-omarchy plugin list --json | grep -F "$generated_id" | grep -F enabled >/dev/null
+omarchy plugin add "file://$generated" --yes
+omarchy plugin list --json | grep -F "$generated_id" >/dev/null
 
 mkdir -p "$HOME/.config/omarchy"
 cat > "$HOME/.config/omarchy/shell.json" <<JSON
