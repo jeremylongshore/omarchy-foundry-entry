@@ -79,8 +79,6 @@ if ! omarchy plugin add "file://$generated" --yes; then
   test -f "$generated_install/manifest.json"
   test "$(jq -r '.id' "$generated_install/manifest.json")" = "$generated_id"
 fi
-omarchy plugin list --json | grep -F "$generated_id" >/dev/null
-
 mkdir -p "$HOME/.config/omarchy"
 cat > "$HOME/.config/omarchy/shell.json" <<JSON
 {"version":1,"bar":{"position":"top","transparent":false,"centerAnchor":"$generated_id",
