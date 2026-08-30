@@ -13,12 +13,10 @@ use JSON::PP qw(encode_json);
 use File::Spec;
 use Time::HiRes qw(sleep);
 
-require "syscall.ph";
 umask 0077;
 
 my $MAX_DESCRIPTION = 500;
 my $MAX_DESCRIPTION_FILE = 502;
-my $RENAME_NOREPLACE = 1;
 my @created_files;
 my @created_dirs;
 my ($workspace_fh, $temp_fh, $temp_name, $published);
@@ -474,9 +472,15 @@ sub create_project {
         unless same_dir(\@temp_opened, \@temp_named);
     fail("target appeared during generation") if lstat($id);
 
-    my $rc = syscall(&SYS_renameat2, fileno($workspace_fh), $temp_name,
-        fileno($workspace_fh), $id, $RENAME_NOREPLACE);
-    fail("atomic no-replace publication failed") if $rc != 0;
+    # GNU mv is part of stock Omarchy's coreutils runtime. With both operands
+    # relative to the retained workspace descriptor, --no-clobber preserves a
+    # target that appears after our precheck. A skipped move exits zero, so the
+    # staging directory's continued existence is the authoritative failure
+    # signal rather than the subprocess status alone.
+    my $mv = system('/usr/bin/mv', '--no-clobber', '--no-target-directory',
+        '--', $temp_name, $id);
+    fail("atomic no-clobber publication failed")
+        if $mv != 0 || lstat($temp_name) || !lstat($id);
     $published = 1;
 
     print encode_json({

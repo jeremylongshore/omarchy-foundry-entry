@@ -14,8 +14,8 @@ agent, installer, Git client, or publisher.
   of specific marketplace copy.
 - Pins the allowed root, workspace, and private staging tree by open directory
   descriptor so a live path swap cannot redirect its writes.
-- Publishes the complete draft with Linux `renameat2(RENAME_NOREPLACE)`, so a
-  concurrent creator or planted target cannot be merged or overwritten.
+- Publishes the complete draft with stock coreutils' atomic no-clobber move, so
+  a concurrent creator or planted target cannot be merged or overwritten.
 - Creates a manifest, accessible QML entry point, pure model, offline tests,
   contract checks, README, security notes, license, pinned CI, and a named SVG
   banner whose palette is derived from that plugin identity.
@@ -26,8 +26,9 @@ agent, installer, Git client, or publisher.
 ## Runtime dependencies
 
 The installed helper uses Perl modules shipped by Arch's core Perl package and
-the Linux `renameat2` system call. The panel uses Omarchy's QML and Quickshell
-runtime. Node is development-only and never runs in the graphical session.
+GNU coreutils, both present on stock Omarchy. The panel uses Omarchy's QML and
+Quickshell runtime. Node is development-only and never runs in the graphical
+session.
 
 ## Create a draft
 
