@@ -1,13 +1,13 @@
 {
   "fingerprint": "cc8f8f4fe3edb83b4a20755e88685ab4bbc66216a84a4819f29881aa66d1ffd6",
-  "sourceCommit": "15f58c813aa4508ba3dee292dce0af1f4d19a1d5",
+  "sourceCommit": "1f989d4778f688b250fefb3eb19f4b687d589004",
   "sourceDirty": false,
-  "sourcePackageSha256": "90e99574b0af8ab23d718e0cd938d51b28864e80b1efec6d0f503327d82d0712",
-  "remotePackageSha256": "90e99574b0af8ab23d718e0cd938d51b28864e80b1efec6d0f503327d82d0712",
+  "sourcePackageSha256": "edf6edaeb2a4d120deffde18eadc372384b0fa23704fc045b4520c573d4caef5",
+  "remotePackageSha256": "edf6edaeb2a4d120deffde18eadc372384b0fa23704fc045b4520c573d4caef5",
   "rig": "intent-ops-buzz/omarchy-rig",
-  "runId": "foundry-3166548",
-  "rawShellLogSha256": "431f83ee4a0d026dab8759ae69f0a91d5911dcc925cb0d3626f00eb329d09a52",
-  "doctorReceiptSha256": "8a0daab18e04ca845f08af3be558b0afaac602f476ed80d65ca5fee6fb9636d8",
+  "runId": "foundry-3170090",
+  "rawShellLogSha256": "23585b7564e0aeffa042dd30dfa869f4246d6cd3241f7e7978ba068b79a26ece",
+  "doctorReceiptSha256": "a7333d5e045e0ea669a16781c094447dc3801a2c7662993bff245dfc92d1a21b",
   "packageBoundary": "runtime tree only; receipts, tests, developer scripts, reports, and preview excluded",
   "evidenceBoundary": "isolated real Omarchy shell and unchanged production generator, doctor receipt, Model, bar, and panel under a dedicated headless compositor; live IPC toggle; direct full-frame grim capture with no crop or image post-processing",
   "fixture": "no product fixture branch; panel reads the shipped doctor receipt",
@@ -20,17 +20,17 @@
   "outputScale": 1.5,
   "visualInspection": {
     "status": "approved",
-    "previewSha256": "b5bd0b3f5836f21b03ec18136cb63540f4f8d950891e2021ed71f10d81712d5d",
+    "previewSha256": "245c1e36989f81c03d0ddc0bc288926bd68f508b75e345a37f29e4af5a5bf658",
     "inspector": "jeremylongshore",
-    "inspectedAt": "2026-08-31T21:48:40Z",
+    "inspectedAt": "2026-08-31T21:50:20Z",
     "checks": [
       "product value visible at marketplace scale",
       "no primary content clipped",
       "plugin-specific visual identity"
     ]
   },
-  "previewSha256": "b5bd0b3f5836f21b03ec18136cb63540f4f8d950891e2021ed71f10d81712d5d",
+  "previewSha256": "245c1e36989f81c03d0ddc0bc288926bd68f508b75e345a37f29e4af5a5bf658",
   "dimensions": "1280 x 720",
   "nonblackCoverage": 0.689453,
-  "capturedAt": "2026-08-31T21:47:45Z"
+  "capturedAt": "2026-08-31T21:49:36Z"
 }

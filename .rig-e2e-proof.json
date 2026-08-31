@@ -1,7 +1,7 @@
 {
-  "commit": "354596f48a2740aada3bfd4cb42ef22e1e7b7911",
-  "installedFoundryCommit": "354596f48a2740aada3bfd4cb42ef22e1e7b7911",
-  "generatedTreeCommit": "6032930d607a3df3505e4a9d23a43072a43523f4",
+  "commit": "1f989d4778f688b250fefb3eb19f4b687d589004",
+  "installedFoundryCommit": "1f989d4778f688b250fefb3eb19f4b687d589004",
+  "generatedTreeCommit": "ddfd9a7c492a2ac19b635e6db3acd0e39fd5dd4e",
   "rig": "intent-ops-buzz/omarchy-rig",
   "foundryOrigin": "github",
   "generatedOrigin": "isolated file-git",
@@ -10,5 +10,5 @@
   "generatedShell": "loaded",
   "descriptions": "500/500",
   "bannerIdentity": "unique",
-  "completedAt": "2026-08-30T03:05:24Z"
+  "completedAt": "2026-08-31T21:49:55Z"
 }
