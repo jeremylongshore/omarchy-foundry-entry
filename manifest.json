@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "author": "Jeremy Longshore",
   "license": "MIT",
-  "description": "Foundry turns an Omarchy bar-widget idea into a reviewable project with unique identity, exact marketplace copy, a plugin-specific SVG banner, offline tests, pinned CI, security guidance, and explicit install and removal commands. Its descriptor-pinned, race-safe generator stages files privately and publishes only to a new target. It never installs, enables, commits, pushes, publishes, calls AI, or reaches the network. Every draft begins UNPROVEN and must earn real-shell evidence before release.",
+  "description": "Foundry creates a local Omarchy bar-widget draft from your ID, name, and 500-char description. It generates identity, matched copy, a unique SVG banner, offline tests, CI, security, and install/removal guidance. Its descriptor-pinned generator stages privately and publishes only to a new target, never overwriting it. The draft begins UNPROVEN. Validate and capture real-shell evidence before release. Foundry never installs, enables, commits, pushes, publishes, calls a network service, or uses AI.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Foundry",
-    "description": "Foundry turns an Omarchy bar-widget idea into a reviewable project with unique identity, exact marketplace copy, a plugin-specific SVG banner, offline tests, pinned CI, security guidance, and explicit install and removal commands. Its descriptor-pinned, race-safe generator stages files privately and publishes only to a new target. It never installs, enables, commits, pushes, publishes, calls AI, or reaches the network. Every draft begins UNPROVEN and must earn real-shell evidence before release.",
+    "description": "Foundry creates a local Omarchy bar-widget draft from your ID, name, and 500-char description. It generates identity, matched copy, a unique SVG banner, offline tests, CI, security, and install/removal guidance. Its descriptor-pinned generator stages privately and publishes only to a new target, never overwriting it. The draft begins UNPROVEN. Validate and capture real-shell evidence before release. Foundry never installs, enables, commits, pushes, publishes, calls a network service, or uses AI.",
     "category": "Developer Tools",
     "aliases": [
       "foundry",

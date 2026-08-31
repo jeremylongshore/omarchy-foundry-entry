@@ -11,8 +11,13 @@ test("both marketplace descriptions use the complete allowance", () => {
   assert.equal(manifest.description.length, 500)
   assert.equal(manifest.barWidget.description.length, 500)
   assert.equal(manifest.barWidget.description, manifest.description)
-  assert.match(manifest.description, /race-safe generator/)
-  assert.match(manifest.description, /never installs, enables, commits, pushes, publishes/)
+  for (const claim of [
+    "local Omarchy bar-widget draft", "500-char description", "matched copy",
+    "unique SVG banner", "offline tests, CI, security, and install/removal guidance",
+    "descriptor-pinned generator", "publishes only to a new target",
+    "draft begins UNPROVEN", "real-shell evidence before release",
+    "never installs, enables, commits, pushes, publishes, calls a network service, or uses AI"
+  ]) assert.match(manifest.description, new RegExp(claim))
 })
 
 test("Foundry owns a named, wide, graphic SVG banner", () => {
