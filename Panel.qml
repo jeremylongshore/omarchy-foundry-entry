@@ -2,6 +2,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+// Qt 6.12 adds its own Color type, so Omarchy's palette singleton must be
+// qualified (docs/omarchy-shell.md, Theme tokens).
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -103,7 +106,7 @@ Panel {
           PanelHero {
             title: "FORGE THE DRAFT. KEEP THE RECEIPT."
             meta: root.loaded ? root.receipt.message : "Reading the local Foundry boundary"
-            foreground: root.bar ? root.bar.foreground : Color.foreground
+            foreground: root.bar ? root.bar.foreground : Commons.Color.foreground
             fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
             iconComponent: Component {
               Rectangle {
@@ -126,7 +129,7 @@ Panel {
             }
           }
 
-          PanelSeparator { foreground: root.bar ? root.bar.foreground : Color.foreground }
+          PanelSeparator { foreground: root.bar ? root.bar.foreground : Commons.Color.foreground }
 
           Row {
             id: stageRow
@@ -148,7 +151,7 @@ Panel {
                 color: Qt.rgba(0.21, 0.29, 0.40, 0.22)
                 opacity: 0.96
                 border.width: 1
-                border.color: Color.accent
+                border.color: Commons.Color.accent
                 Text {
                   anchors.left: parent.left
                   anchors.leftMargin: Style.space(10)
@@ -173,7 +176,7 @@ Panel {
                   text: modelData.detail
                   textFormat: Text.PlainText
                   elide: Text.ElideRight
-                  color: root.bar ? Qt.darker(root.bar.foreground, 1.25) : Color.muted
+                  color: root.bar ? Qt.darker(root.bar.foreground, 1.25) : Commons.Color.muted
                   font.family: root.bar ? root.bar.fontFamily : Style.font.family
                   font.pixelSize: Style.font.bodySmall
                 }
@@ -187,7 +190,7 @@ Panel {
             PanelSectionHeader {
               text: "PROOF RECEIPT"
               leftPadding: Style.space(16)
-              foreground: root.bar ? root.bar.foreground : Color.foreground
+              foreground: root.bar ? root.bar.foreground : Commons.Color.foreground
               fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
             }
             Repeater {
@@ -203,7 +206,7 @@ Panel {
                 color: "transparent"
                 opacity: 1
                 border.width: 0
-                border.color: Color.accent
+                border.color: Commons.Color.accent
                 Text {
                   anchors.left: parent.left
                   anchors.leftMargin: Style.space(16)
@@ -212,7 +215,7 @@ Panel {
                   textFormat: Text.PlainText
                   width: parent.width * 0.35
                   elide: Text.ElideRight
-                  color: root.bar ? root.bar.foreground : Color.foreground
+                  color: root.bar ? root.bar.foreground : Commons.Color.foreground
                   font.family: root.bar ? root.bar.fontFamily : Style.font.family
                   font.pixelSize: Style.font.body
                 }
@@ -225,7 +228,7 @@ Panel {
                   width: parent.width * 0.6
                   horizontalAlignment: Text.AlignRight
                   elide: Text.ElideLeft
-                  color: root.bar ? Qt.darker(root.bar.foreground, 1.3) : Color.muted
+                  color: root.bar ? Qt.darker(root.bar.foreground, 1.3) : Commons.Color.muted
                   font.family: root.bar ? root.bar.fontFamily : Style.font.family
                   font.pixelSize: Style.font.bodySmall
                 }
@@ -264,7 +267,7 @@ Panel {
                 text: "omarchy-foundry create --workspace PATH --id io.github.you.widget --name NAME --description-file COPY.txt --dry-run"
                 textFormat: Text.PlainText
                 wrapMode: Text.Wrap
-                color: root.bar ? root.bar.foreground : Color.foreground
+                color: root.bar ? root.bar.foreground : Commons.Color.foreground
                 font.family: root.bar ? root.bar.fontFamily : Style.font.family
                 font.pixelSize: Style.font.bodySmall
               }
@@ -273,7 +276,7 @@ Panel {
                 text: "No install · no Git write · no network · no publication"
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
-                color: root.bar ? Qt.darker(root.bar.foreground, 1.3) : Color.muted
+                color: root.bar ? Qt.darker(root.bar.foreground, 1.3) : Commons.Color.muted
                 font.family: root.bar ? root.bar.fontFamily : Style.font.family
                 font.pixelSize: Style.font.bodySmall
               }
