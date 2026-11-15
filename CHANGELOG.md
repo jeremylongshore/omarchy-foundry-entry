@@ -17,13 +17,11 @@ and gate c28 refuses them.
 
 ## [Unreleased]
 
-## [0.2.1] - 2026-11-15
-
 ### Fixed
 
 - Qualify Omarchy's palette as `Commons.Color`, as the shell contract requires
-  now that Qt 6.12 has its own `Color` type. A presentation-contract test fails on any bare
-  `Color.` in the shipped QML.
+  now that Qt 6.12 has its own `Color` type. A presentation-contract test fails
+  on any bare `Color.` in the shipped QML.
 
 ### Changed
 

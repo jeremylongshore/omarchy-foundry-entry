@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.jeremylongshore.foundry",
   "name": "Foundry",
-  "version": "0.2.1",
+  "version": "0.2.0",
   "author": "Jeremy Longshore",
   "license": "MIT",
   "description": "Foundry creates a local Omarchy bar-widget draft from your ID, name, and 500-char description. It generates identity, matched copy, a unique SVG banner, offline tests, CI, security, and install/removal guidance. Its descriptor-pinned generator stages privately and publishes only to a new target, never overwriting it. The draft begins UNPROVEN. Validate and capture real-shell evidence before release. Foundry never installs, enables, commits, pushes, publishes, calls a network service, or uses AI.",
