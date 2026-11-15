@@ -1,11 +1,12 @@
 {
   "name": "omarchy-foundry-entry",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "license": "MIT",
   "description": "Race-safe proof-first Omarchy plugin scaffold and marketplace presentation guardrail",
   "scripts": {
     "test": "c8 --all --include=Model.js --check-coverage --lines 95 --functions 95 --branches 90 --statements 95 node --test tests/*.test.js",
+    "test:smoke": "node --test tests/smoke.test.js",
     "test:race": "for run in 1 2 3; do node --test --test-concurrency=4 tests/*.test.js || exit; done",
     "test:mutation": "stryker run",
     "test:e2e": "bash e2e/buzz.sh",

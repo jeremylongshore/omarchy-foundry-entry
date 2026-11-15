@@ -6,6 +6,11 @@ Foundry reads its own bundled helper and runs `doctor --json` as a fixed argv.
 It does not accept panel input, use a shell command string, access the network,
 store mutable state, read credentials, install plugins, or write Git data.
 
+The "safe start" text in the panel is display only: the panel never runs
+`create`. It is built from the helper's own file path, single-quoted when the
+path holds a character a shell would interpret, and falls back to the standard
+install location when that path is unusable.
+
 ## Generator write boundary
 
 `bin/omarchy-foundry create` only accepts a workspace beneath the selected

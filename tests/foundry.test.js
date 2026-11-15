@@ -218,3 +218,18 @@ test("different plugin identities receive different named SVG themes", () => {
     assert.match(beta, />Beta</)
   } finally { fs.rmSync(fix.root, { recursive: true, force: true }) }
 })
+
+test("generated CI pins the same action commits this repository's own CI uses", () => {
+  const fix = fixture()
+  try {
+    const args = createArgs("io.github.demo.pins", "Pins")
+    args[2] = fix.workspace
+    assert.equal(run(fix, ...args).status, 0)
+    const pins = text => new Map([...text.matchAll(/uses:\s*(actions\/[a-z-]+)@([0-9a-f]{40})\s*#\s*(v[0-9.]+)/g)]
+      .map(m => [m[1], m[2] + " " + m[3]]))
+    const own = pins(fs.readFileSync(path.join(__dirname, "..", ".github", "workflows", "test.yml"), "utf8"))
+    const generated = pins(fs.readFileSync(path.join(fix.workspace, "io.github.demo.pins", ".github", "workflows", "test.yml"), "utf8"))
+    assert.deepEqual([...generated.keys()].sort(), ["actions/checkout", "actions/setup-node"])
+    for (const [action, pin] of generated) assert.equal(pin, own.get(action), action)
+  } finally { fs.rmSync(fix.root, { recursive: true, force: true }) }
+})

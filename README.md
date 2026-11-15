@@ -37,14 +37,22 @@ character marketplace allowance. Choose a workspace inside your home directory,
 or set `FOUNDRY_ALLOWED_ROOT` to an explicit development root. Review a dry run
 before creating anything.
 
+`omarchy plugin add` installs Foundry under
+`~/.config/omarchy/plugins/io.github.jeremylongshore.foundry/` and does not put
+its `bin/` directory on your PATH, so call the helper by that path. The panel
+shows the same command, built from the helper's real location.
+
 ```bash
-bin/omarchy-foundry create \
+foundry=~/.config/omarchy/plugins/io.github.jeremylongshore.foundry/bin/omarchy-foundry
+"$foundry" create \
   --workspace "$HOME/Projects" \
   --id io.github.you.hello-widget \
   --name "Hello Widget" \
   --description-file "$HOME/hello-widget-marketplace-copy.txt" \
   --dry-run
 ```
+
+From a checkout of this repository the helper is `bin/omarchy-foundry`.
 
 The description file may contain one trailing newline, but the description
 itself must be exactly 500 characters. Remove `--dry-run` only after reviewing
@@ -58,9 +66,10 @@ creating a Git repository or installing the plugin.
 omarchy plugin add https://github.com/jeremylongshore/omarchy-foundry-entry --enable
 ```
 
-The panel displays a receipt and the terminal command. It does not expose an
-arbitrary command field, because Omarchy plugins share the long-running shell
-process and run with the current user permissions.
+The panel displays a receipt and the terminal command. It only shows the
+command; it never runs `create`, and it does not expose an arbitrary command
+field, because Omarchy plugins share the long-running shell process and run with
+the current user permissions.
 
 ## Remove Foundry
 
@@ -72,6 +81,7 @@ omarchy plugin remove io.github.jeremylongshore.foundry
 
 ```bash
 npm test
+npm run test:smoke
 npm run test:race
 npm run test:mutation
 npm run audit
@@ -84,6 +94,18 @@ The final two commands use the Buzz production-boundary rig. Static validation
 is not a render, and a missing rig is `UNPROVEN`, not a pass. `npm run test:e2e`
 also creates a disposable project through the shipped generator, installs that
 project locally on the rig, shadows Node, and loads it in a real Omarchy shell.
+It installs Foundry from GitHub, so it proves a pushed commit: set
+`FOUNDRY_E2E_REF=HEAD` to prove an unmerged commit you have pushed, or leave it
+unset to prove the default branch. `tests/TESTING.md` records what each lane
+proves and the rig versions it last ran on.
+
+## What the preview shows
+
+`preview.png` is a direct capture of the real panel in an isolated Omarchy
+shell, run on the rig under a headless sway compositor (the rig has no
+Hyprland). It is not a mock-up and uses no fixture: the panel reads the shipped
+helper's own `doctor` receipt. The disposable home directory is empty, so the
+preview shows Foundry idle, before any draft exists.
 
 ## Proof model
 

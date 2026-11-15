@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Prove the exact published Foundry commit can generate, validate, install, and
-# load a disposable starter inside an isolated Buzz Omarchy session.
+# load a disposable starter inside an isolated Buzz Omarchy session, and that the
+# command the panel shows runs from the installed plugin directory on a stock PATH.
+#
+# By default the rig installs the default branch of the GitHub repository, as a
+# user does. `omarchy plugin add` has no ref option, so to prove a commit that is
+# pushed but not yet merged, set FOUNDRY_E2E_REF=HEAD: the rig then fetches that
+# exact commit from GitHub into a throwaway clone and installs the clone. Either
+# way the installed commit must equal this tree's HEAD, or the run fails.
 set -euo pipefail
 
 TARGET="$(cd "$(dirname "$0")/.." && pwd)"
@@ -10,9 +17,25 @@ COMMIT="$(git -C "$TARGET" rev-parse HEAD)"
 RECEIPT="$TARGET/.rig-e2e-proof.json"
 RUN_ID="foundry-e2e-$$"
 
-RESULT="$(ssh -o BatchMode=yes "$HOST" "docker exec -i $CONTAINER sh -s -- '$RUN_ID'" <<'REMOTE'
+# The rig proves a pushed commit, not a working tree: refuse runtime edits that
+# would make the receipt describe code nobody ran.
+if [[ -n "$(git -C "$TARGET" status --porcelain --untracked-files=all -- '*.qml' '*.js' manifest.json bin 2>/dev/null)" ]]; then
+  echo "rig-e2e: runtime files differ from HEAD; commit and push them first" >&2
+  exit 2
+fi
+
+PIN=""
+ORIGIN="github"
+case "${FOUNDRY_E2E_REF:-}" in
+  "") ;;
+  HEAD | "$COMMIT") PIN="$COMMIT"; ORIGIN="github commit via isolated file-git" ;;
+  *) echo "rig-e2e: FOUNDRY_E2E_REF must be HEAD or the full HEAD commit" >&2; exit 2 ;;
+esac
+
+RESULT="$(ssh -o BatchMode=yes "$HOST" "docker exec -i $CONTAINER sh -s -- '$RUN_ID' '$PIN'" <<'REMOTE'
 set -eu
 run_id="$1"
+pin="${2:-}"
 export OMARCHY_PATH=/root/omarchy PATH=/root/omarchy/bin:/usr/bin:/bin
 repo=https://github.com/jeremylongshore/omarchy-foundry-entry.git
 foundry_id=io.github.jeremylongshore.foundry
@@ -39,7 +62,16 @@ chmod 700 "$rig_home" "$runtime" "$workspace" "$workspace/projects"
 export HOME="$rig_home" XDG_RUNTIME_DIR="$runtime"
 
 foundry="$HOME/.config/omarchy/plugins/$foundry_id"
-if ! omarchy plugin add "$repo" --yes; then
+install_url="$repo"
+if [ -n "$pin" ]; then
+  # Fetch exactly the pushed commit from GitHub; install the clone by file URL.
+  src="$workspace/foundry-src"
+  git init -q "$src"
+  git -C "$src" fetch -q "$repo" "$pin"
+  git -C "$src" checkout -q --detach FETCH_HEAD
+  install_url="file://$src"
+fi
+if ! omarchy plugin add "$install_url" --yes; then
   # Current Omarchy add clones and validates before its unconditional live-shell
   # rescan. In this isolated pre-shell phase, that final rescan is expected to
   # fail; accept only the already-validated target at the exact declared id.
@@ -52,6 +84,32 @@ foundry_commit=$(git -C "$foundry" rev-parse HEAD)
 # Reuse the repository's audited 500-character prose only as bounded E2E input.
 # The generated project remains disposable and never enters the marketplace.
 jq -r '.description' "$foundry/manifest.json" > "$workspace/description.txt"
+# The panel shows a command built from the helper's own path, because a plugin's
+# bin/ is not on PATH. Build that exact text with the installed Model.js, fill its
+# placeholders, and run it with a stock PATH and nothing else. The bare name must
+# not resolve there, or this proves nothing.
+if env -i PATH=/usr/bin:/bin bash -c 'command -v omarchy-foundry' >/dev/null 2>&1; then
+  echo "rig-e2e: a bare omarchy-foundry resolves on a stock PATH" >&2
+  exit 1
+fi
+shown_command=$(/usr/bin/node -e '
+  const M = require(process.argv[1])
+  const [, , helper, home, ws, copy] = process.argv
+  const inv = M.helperInvocation(helper, home)
+  const shown = M.startCommand(helper, home)
+  process.stdout.write(inv + shown.slice(inv.length)
+    .replace("--workspace PATH", "--workspace " + M.shellQuote(ws))
+    .replace("--name NAME", "--name Rig")
+    .replace("--description-file COPY.txt", "--description-file " + M.shellQuote(copy)))
+' "$foundry/Model.js" "$foundry/bin/omarchy-foundry" "$HOME" "$workspace/projects" "$workspace/description.txt")
+case "$shown_command" in
+  "~/.config/omarchy/plugins/$foundry_id/bin/omarchy-foundry create "*) ;;
+  *) echo "rig-e2e: panel command is not the installed helper path: $shown_command" >&2; exit 1 ;;
+esac
+panel_out=$(env -i PATH=/usr/bin:/bin HOME="$HOME" FOUNDRY_ALLOWED_ROOT="$workspace" bash -c "$shown_command")
+printf '%s' "$panel_out" | jq -e '.write == false and (.target | endswith("/io.github.you.widget"))' >/dev/null
+test -z "$(ls -A "$workspace/projects")"
+
 FOUNDRY_ALLOWED_ROOT="$workspace" "$foundry/bin/omarchy-foundry" create \
   --workspace "$workspace/projects" \
   --id "$generated_id" \
@@ -130,13 +188,13 @@ if FOUNDRY_ALLOWED_ROOT="$workspace" "$foundry/bin/omarchy-foundry" create \
   exit 1
 fi
 
-echo "E2E_RECEIPT installed_foundry=$foundry_commit generated_tree=$generated_commit node=shadowed hostile_id=refused shell=loaded descriptions=500/500 banner=unique"
+echo "E2E_RECEIPT installed_foundry=$foundry_commit generated_tree=$generated_commit panel_command=runs node=shadowed hostile_id=refused shell=loaded descriptions=500/500 banner=unique"
 REMOTE
 )"
 
 printf '%s\n' "$RESULT"
 LINE="$(printf '%s\n' "$RESULT" | grep '^E2E_RECEIPT ' || true)"
-[[ "$LINE" =~ ^E2E_RECEIPT\ installed_foundry=([0-9a-f]{40})\ generated_tree=([0-9a-f]{40})\ node=shadowed\ hostile_id=refused\ shell=loaded\ descriptions=500/500\ banner=unique$ ]] || {
+[[ "$LINE" =~ ^E2E_RECEIPT\ installed_foundry=([0-9a-f]{40})\ generated_tree=([0-9a-f]{40})\ panel_command=runs\ node=shadowed\ hostile_id=refused\ shell=loaded\ descriptions=500/500\ banner=unique$ ]] || {
   echo "rig-e2e: missing or malformed receipt line" >&2
   exit 1
 }
@@ -147,9 +205,10 @@ GENERATED_COMMIT="${BASH_REMATCH[2]}"
 
 jq -n --arg commit "$COMMIT" --arg rig "$HOST/$CONTAINER" \
   --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg installed "$INSTALLED_COMMIT" \
-  --arg generated "$GENERATED_COMMIT" \
+  --arg generated "$GENERATED_COMMIT" --arg origin "$ORIGIN" \
   '{commit:$commit,installedFoundryCommit:$installed,generatedTreeCommit:$generated,
-    rig:$rig,foundryOrigin:"github",generatedOrigin:"isolated file-git",
+    rig:$rig,foundryOrigin:$origin,generatedOrigin:"isolated file-git",
+    panelCommand:"runs from the installed path on a stock PATH",
     node:"shadowed",hostileId:"refused",generatedShell:"loaded",
     descriptions:"500/500",bannerIdentity:"unique",completedAt:$at}' > "$RECEIPT"
 echo "rig-e2e: PASS, receipt written to $RECEIPT"
