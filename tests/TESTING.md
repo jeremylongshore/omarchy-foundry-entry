@@ -55,3 +55,9 @@ c43 refuse a receipt that does not match the tree.
   `Model.fileUrlToPath` decodes that, and the unit tests cover both forms.
 - `Quickshell.env("HOME")` returns the shell's HOME, and `null` for an unset
   variable. `Model.helperInvocation` treats `null` as no home.
+- On the rig's coreutils 9.12 and node 26.13.1, the generator's three
+  `mv --no-clobber` race tests (planted target, live workspace swap, concurrent
+  creators) and the options test passed 4 of 4, and the smoke and model tests
+  passed 21 of 21. A pre-merge audit had checked the no-clobber move on coreutils
+  9.4 only. The rig has no npm, so the one generator test that runs `npm test`
+  in a generated project was not run there.
