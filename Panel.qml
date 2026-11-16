@@ -18,12 +18,15 @@ Panel {
   property var hostWidget: null
   property bool openedFromHotkey: false
   readonly property var barIdentity: hostWidget || root
-  readonly property string helperPath: Qt.resolvedUrl("bin/omarchy-foundry").toString().replace(/^file:\/\//, "")
+  // The helper lives in this plugin's own directory. `omarchy plugin add` does
+  // not put a plugin's bin/ on PATH, so every use below starts from this path.
+  readonly property string helperPath: Model.fileUrlToPath(Qt.resolvedUrl("bin/omarchy-foundry").toString())
   property var receipt: Model.emptyReceipt()
   property bool loaded: false
-  readonly property bool isAlert: receipt.ready && receipt.proof !== "READY"
+  readonly property bool isAlert: Model.needsAttention(receipt, loaded)
   readonly property string label: Model.pillText(receipt)
-  readonly property string tooltip: Model.tooltipText(receipt)
+  readonly property string tooltip: Model.tooltipText(receipt, loaded)
+  readonly property string startCommand: Model.startCommand(helperPath, Quickshell.env("HOME"))
   readonly property color foundryBlue: "#77b8ff"
   readonly property color foundrySteel: "#354b66"
   readonly property color foundryInk: "#10151d"
@@ -105,7 +108,7 @@ Panel {
 
           PanelHero {
             title: "FORGE THE DRAFT. KEEP THE RECEIPT."
-            meta: root.loaded ? root.receipt.message : "Reading the local Foundry boundary"
+            meta: Model.heroText(root.receipt, root.loaded)
             foreground: root.bar ? root.bar.foreground : Commons.Color.foreground
             fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
             iconComponent: Component {
@@ -264,9 +267,9 @@ Panel {
               }
               Text {
                 width: parent.width
-                text: "omarchy-foundry create --workspace PATH --id io.github.you.widget --name NAME --description-file COPY.txt --dry-run"
+                text: root.startCommand
                 textFormat: Text.PlainText
-                wrapMode: Text.Wrap
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 color: root.bar ? root.bar.foreground : Commons.Color.foreground
                 font.family: root.bar ? root.bar.fontFamily : Style.font.family
                 font.pixelSize: Style.font.bodySmall

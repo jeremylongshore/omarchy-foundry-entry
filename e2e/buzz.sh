@@ -19,6 +19,7 @@ jq -e '.sourceDirty == false and .sourcePackageSha256 == .remotePackageSha256
   and .primaryAction == "Foundry doctor receipt rendered and panel opened through live IPC"' \
   "$ROOT/.render-proof.json" >/dev/null
 jq -e '.installedFoundryCommit == .commit and .generatedShell == "loaded"
+  and .panelCommand == "runs from the installed path on a stock PATH"
   and .node == "shadowed" and .hostileId == "refused"
   and .descriptions == "500/500" and .bannerIdentity == "unique"' \
   "$ROOT/.rig-e2e-proof.json" >/dev/null

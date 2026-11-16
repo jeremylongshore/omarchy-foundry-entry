@@ -61,7 +61,7 @@ jobs:
       - name: Marketplace contract and no symlinks
         if: steps.scope.outputs.run_full == 'true'
         run: |
-          jq -e '.version == "0.2.0"' manifest.json
+          jq -e '.version == "0.2.1"' manifest.json
           jq -e '.description | length == 500' manifest.json
           jq -e '.barWidget.description | length == 500' manifest.json
           test -z "$(find . -type l -not -path './.git/*' -not -path './node_modules/*')"

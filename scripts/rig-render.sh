@@ -83,7 +83,11 @@ SWAY_CONFIG=/tmp/foundry-sway-\$RUN_ID.conf
 SWAY_LOG=/tmp/foundry-sway-\$RUN_ID.log
 QS_LOG=/tmp/foundry-qs-\$RUN_ID.log
 SHOT=/tmp/rigrender-\$RUN_ID.png
-PLUGIN_DIR=\$RIG_ROOT/.config/omarchy/plugins/\$NAME
+# A real install lives at plugins/<id> (omarchy-plugin-add moves its clone to the
+# manifest id), and the panel shows the helper's own path, so the render uses the
+# same layout. Keying it on the short name would put a path no user has in the
+# preview.
+PLUGIN_DIR=\$RIG_ROOT/.config/omarchy/plugins/\$MOD
 QS_PID=""; SWAY_PID=""
 cleanup() {
   [ -z "\$QS_PID" ] || kill "\$QS_PID" 2>/dev/null || true

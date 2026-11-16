@@ -14,7 +14,7 @@
 
 ## Verification
 
-<!-- Report only checks you ran. Never imply that an unavailable check passed. -->
+<!-- Report only checks you ran. Never imply an unavailable check passed. -->
 
 | Check | Required when | Result |
 | --- | --- | --- |
