@@ -160,6 +160,15 @@ done
 export WAYLAND_DISPLAY="${wayland_socket##*/}"
 export SWAYSOCK=$(find "$runtime" -maxdepth 1 -type s -name 'sway-ipc.*.sock' | head -1)
 
+# A real Omarchy install always has a current theme. Seed the state
+# omarchy-theme-set writes, as the render does, so current first-party shell
+# plugins that read it do not log warnings in this run's shell log.
+current="$HOME/.local/state/omarchy/current"
+mkdir -p "$current"
+ln -nsf /root/omarchy/themes/tokyo-night "$current/theme"
+printf 'tokyo-night\n' > "$current/theme.name"
+ln -nsf "$current/theme/backgrounds/0-liftoff.webp" "$current/background"
+
 # A stock graphical session does not need Node. A failing shim first on PATH
 # proves the generated QML loads without a development runtime.
 mkdir "$workspace/nonode"
@@ -171,7 +180,7 @@ qs_pid=$!
 sleep 14
 [ -d "/proc/$qs_pid" ] || { echo "rig-e2e: generated shell exited" >&2; exit 1; }
 if grep -a -iE 'cannot assign|is not a type|unable to|no such|ERROR' "$qs_log" \
-  | grep -aviE 'libEGL|MESA|ZINK|pipewire|pw_loop_new|pw\.loop|UPower|hyprland' >/dev/null; then
+  | grep -aviE 'libEGL|MESA|ZINK|pipewire|pw_loop_new|pw\.loop|pw\.conf|UPower|hyprland' >/dev/null; then
   echo "rig-e2e: generated plugin emitted a shell load error" >&2
   exit 1
 fi
