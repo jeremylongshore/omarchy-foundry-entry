@@ -103,7 +103,7 @@ shown_command=$(/usr/bin/node -e '
     .replace("--description-file COPY.txt", "--description-file " + M.shellQuote(copy)))
 ' "$foundry/Model.js" "$foundry/bin/omarchy-foundry" "$HOME" "$workspace/projects" "$workspace/description.txt")
 case "$shown_command" in
-  "~/.config/omarchy/plugins/$foundry_id/bin/omarchy-foundry create "*) ;;
+  "~/.config/omarchy/plugins/$foundry_id/bin/omarchy-foundry "*) ;;
   *) echo "rig-e2e: panel command is not the installed helper path: $shown_command" >&2; exit 1 ;;
 esac
 panel_out=$(env -i PATH=/usr/bin:/bin HOME="$HOME" FOUNDRY_ALLOWED_ROOT="$workspace" bash -c "$shown_command")

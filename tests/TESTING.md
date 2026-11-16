@@ -8,10 +8,10 @@ document. Run the commands to refresh them.
 
 | Lane | Command | What it proves |
 | --- | --- | --- |
-| Unit | `npm test` | 40 tests across 5 files under c8, with thresholds of 95 lines, 95 functions, 90 branches and 95 statements on `Model.js`. Last run: 100% statements, 98.21% branches, 100% functions, 100% lines. |
+| Unit | `npm test` | 40 tests across 5 files under c8, with thresholds of 95 lines, 95 functions, 90 branches and 95 statements on `Model.js`. Last run: 100% statements, 98.18% branches, 100% functions, 100% lines. |
 | Smoke | `npm run test:smoke` | 8 tests. Every `Model` function the QML calls exists. The helper answers `doctor` on a stock PATH with node shadowed. The command the panel shows runs from an installed copy of the plugin on a stock PATH, for a plain home and for a home containing a space and a quote, as `~/...` and as an absolute path. A negative control shows the old bare `omarchy-foundry` exits 127. |
 | Race | `npm run test:race` | The generator's race and swap tests, three repetitions at concurrency 4. |
-| Mutation | `npm run test:mutation` | Stryker over `Model.js`, break threshold 90. Last run: 97.63% (165 killed, 4 survived). The survivors are equivalent: the `typeof module` export guard, an empty-string default and an unreachable catch block. Stryker's command runner executes `tests/model.test.js` only, so the generator is covered by the race and unit lanes, not by mutation. |
+| Mutation | `npm run test:mutation` | Stryker over `Model.js`, break threshold 90. Last run: 97.62% (164 killed, 4 survived). The survivors are equivalent: the `typeof module` export guard, an empty-string default and an unreachable catch block. Stryker's command runner executes `tests/model.test.js` only, so the generator is covered by the race and unit lanes, not by mutation. |
 | Audit | `npm run audit` | Harness hash verification, `audit --deep` and `scan` (gitleaks, osv-scanner, markdownlint, lychee). |
 | Gates | `bash scripts/run-plugin-gates.sh .` | The vendored contributing-clanker lane (c28 to c44). `scripts/check-lane-freshness.sh` compares it with canonical. |
 | Rig verify | `bash scripts/rig-verify.sh .` | The real `omarchy-plugin-validate` and `qmllint` accept the runtime tree. Writes `.rig-proof.json`. |

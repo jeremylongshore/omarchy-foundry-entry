@@ -94,7 +94,7 @@ for (const [label, homeName, knowsHome] of [
       const home = knowsHome ? box.home : ""
       const shown = Model.startCommand(helperPath, home)
       const invocation = Model.helperInvocation(helperPath, home)
-      assert.ok(shown.startsWith(invocation + " create "), shown)
+      assert.ok(shown.startsWith(invocation + " \\\n  create "), shown)
       assert.ok(!/^omarchy-foundry /.test(shown), "must not be a bare, PATH-dependent name")
       if (knowsHome) assert.ok(invocation.startsWith("~/" + INSTALL_DIR), invocation)
       else if (homeName === "home") assert.equal(invocation, installed)

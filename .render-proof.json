@@ -1,13 +1,13 @@
 {
-  "fingerprint": "b6ad5f6b7a192b0e802ae5e54f7c5f83e92a2916f010d3e0b60adbad283ecd4d",
-  "sourceCommit": "c8bd90ac65a366ae7c0e56d45b2ac9e80295b5fe",
+  "fingerprint": "894ac64015909d36e42417656dabfad0358a13a3c7cb5743695972fc7901635b",
+  "sourceCommit": "967c23e667cf747b43dbb5ab09298826ceb8e3dc",
   "sourceDirty": false,
-  "sourcePackageSha256": "f4324821059fdf760055d21d104d07d9b1d30fc9bb9368edeb3a7bd762b5dc0e",
-  "remotePackageSha256": "f4324821059fdf760055d21d104d07d9b1d30fc9bb9368edeb3a7bd762b5dc0e",
+  "sourcePackageSha256": "6ad7eabf027bec54bc8649b4360f411e10fff0c4a1591c0005b58c4b8d0618ce",
+  "remotePackageSha256": "6ad7eabf027bec54bc8649b4360f411e10fff0c4a1591c0005b58c4b8d0618ce",
   "rig": "intent-ops-buzz/omarchy-rig",
-  "runId": "foundry-128477",
-  "rawShellLogSha256": "06fa6ff21942ba62cb2fa55e05ddcc1ff071d7503379c55034e8d3c10ef74eb0",
-  "doctorReceiptSha256": "a842833f05c12f73a0b0559096a5922bc4cc2038f29e6766cd35f84f89d6fb60",
+  "runId": "foundry-1695550",
+  "rawShellLogSha256": "7b4f4584405eb64c8fdb044426f6c0e59a5675ffd4578d64d79e5b117701c7c9",
+  "doctorReceiptSha256": "ae9219c40108123f2e1297423e604a99a5e134565269f81fdcc93f3338ddd619",
   "packageBoundary": "runtime tree only; receipts, tests, developer scripts, reports, and preview excluded",
   "evidenceBoundary": "isolated real Omarchy shell and unchanged production generator, doctor receipt, Model, bar, and panel under a dedicated headless compositor; live IPC toggle; direct full-frame grim capture with no crop or image post-processing",
   "fixture": "no product fixture branch; panel reads the shipped doctor receipt",
@@ -19,18 +19,12 @@
   },
   "outputScale": 1.5,
   "visualInspection": {
-    "status": "approved",
-    "previewSha256": "b2c5de016bd81a757da641233d148234dcf0d1a8a747649df9018893215ed24a",
-    "inspector": "Claude (agent) for jeremylongshore",
-    "inspectedAt": "2026-11-15T08:56:22Z",
-    "checks": [
-      "product value visible at marketplace scale",
-      "no primary content clipped",
-      "plugin-specific visual identity"
-    ]
+    "status": "pending",
+    "previewSha256": "5242fb9d47035396ffae7a8d46654dc4688c652d9e6b3fdcea6a7ef898a4e1f1",
+    "checks": []
   },
-  "previewSha256": "b2c5de016bd81a757da641233d148234dcf0d1a8a747649df9018893215ed24a",
+  "previewSha256": "5242fb9d47035396ffae7a8d46654dc4688c652d9e6b3fdcea6a7ef898a4e1f1",
   "dimensions": "1280 x 720",
-  "nonblackCoverage": 0.689453,
-  "capturedAt": "2026-11-15T08:56:15Z"
+  "nonblackCoverage": 0.999628,
+  "capturedAt": "2026-11-16T00:00:42Z"
 }

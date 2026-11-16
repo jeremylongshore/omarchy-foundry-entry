@@ -170,7 +170,14 @@ test("an unusable helper path falls back to the standard install location", () =
 
 test("the safe-start command is the helper plus the documented dry-run arguments", () => {
   assert.equal(Model.startCommand("/home/ann/p/bin/omarchy-foundry", "/home/ann"),
-    "~/p/bin/omarchy-foundry create --workspace PATH --id io.github.you.widget --name NAME --description-file COPY.txt --dry-run")
-  assert.match(Model.startCommand("", ""), /^~\/\.config\/omarchy\/plugins\/io\.github\.jeremylongshore\.foundry\/bin\/omarchy-foundry create /)
+    "~/p/bin/omarchy-foundry \\\n  create --workspace PATH --id io.github.you.widget \\\n  --name NAME --description-file COPY.txt --dry-run")
+  assert.match(Model.startCommand("", ""), /^~\/\.config\/omarchy\/plugins\/io\.github\.jeremylongshore\.foundry\/bin\/omarchy-foundry \\\n  create /)
   assert.match(Model.startCommand("/x/y", ""), / --dry-run$/)
+  // Three short lines: no line is wide enough for the text layout to split an
+  // option at its hyphens, and the first holds only the helper.
+  const lines = Model.startCommand("/x/y", "").split("\n")
+  assert.equal(lines.length, 3)
+  assert.equal(lines[0], "/x/y \\")
+  assert.ok(lines[1].length <= 60 && lines[2].length <= 60)
+  assert.ok(lines[1].endsWith(" \\") && !lines[2].endsWith("\\"))
 })

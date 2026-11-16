@@ -6,7 +6,13 @@
 // Where `omarchy plugin add` puts a plugin, relative to HOME. The panel builds
 // its command from the helper's real location; this is only the fallback.
 var INSTALLED_HELPER = "~/.config/omarchy/plugins/io.github.jeremylongshore.foundry/bin/omarchy-foundry"
-var START_ARGS = "create --workspace PATH --id io.github.you.widget --name NAME --description-file COPY.txt --dry-run"
+// The dry-run arguments, broken at option boundaries so the shell's own line
+// continuation shows them on three short lines. A single long line is wrapped by
+// the text layout at hyphens, which splits "--workspace" across two lines.
+var START_ARGS = [
+  "create --workspace PATH --id io.github.you.widget",
+  "--name NAME --description-file COPY.txt --dry-run"
+]
 // Characters a shell leaves alone in a word; anything else gets single quotes.
 var SAFE_WORD = /^[A-Za-z0-9_.+@:\/-]+$/
 var READING_MESSAGE = "Reading the local Foundry boundary"
@@ -89,7 +95,8 @@ function helperInvocation(helperPath, home) {
   // String(undefined) and String(null) are not absolute paths, so they take the
   // same fallback as an empty value without a special case.
   var p = String(helperPath)
-  if (p.charAt(0) !== "/" || p.length > 512 || clean(p, 512) !== p) return INSTALLED_HELPER
+  // clean() also rejects a path over 512 characters, by cutting it.
+  if (p.charAt(0) !== "/" || clean(p, 512) !== p) return INSTALLED_HELPER
   var h = String(home).replace(/\/+$/, "")
   if (h !== "" && p.indexOf(h + "/") === 0) {
     var rest = p.slice(h.length + 1)
@@ -98,8 +105,10 @@ function helperInvocation(helperPath, home) {
   return SAFE_WORD.test(p) ? p : shellQuote(p)
 }
 
+// A valid multi-line shell command: the helper, then the arguments, each line
+// but the last ending in a backslash continuation.
 function startCommand(helperPath, home) {
-  return helperInvocation(helperPath, home) + " " + START_ARGS
+  return helperInvocation(helperPath, home) + " \\\n  " + START_ARGS[0] + " \\\n  " + START_ARGS[1]
 }
 
 if (typeof module !== "undefined") {
